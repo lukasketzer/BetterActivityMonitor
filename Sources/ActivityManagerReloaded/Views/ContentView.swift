@@ -1,0 +1,117 @@
+import SwiftUI
+import SystemKit
+
+struct ContentView: View {
+    @Environment(SystemStore.self) private var store
+    @AppStorage(SettingsKey.theme) private var themeID = Theme.system.id
+
+    var body: some View {
+        @Bindable var store = store
+        let theme = Theme.named(themeID)
+
+        NavigationSplitView {
+            Sidebar()
+                .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 300)
+        } detail: {
+            detail
+                .navigationTitle(store.section?.title ?? "ActivityManagerReloaded")
+        }
+        .environment(\.theme, theme)
+        .tint(theme.accent)
+        .preferredColorScheme(theme.prefersDark ? .dark : nil)
+        .confirmationDialog(confirmTitle, isPresented: Binding(get: { store.pendingSignal != nil },
+                                                             set: { if !$0 { store.pendingSignal = nil } }),
+                            presenting: store.pendingSignal) { pending in
+            Button(pending.signal.number == SIGKILL ? "Force Quit" : "Send \(pending.signal.name)",
+                   role: pending.signal.number == SIGKILL ? .destructive : nil) {
+                store.perform(pending)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { pending in
+            Text(pending.signal.number == SIGKILL
+                 ? "Unsaved changes will be lost. \(pending.names.joined(separator: ", "))"
+                 : "\(pending.signal.summary) → \(pending.names.joined(separator: ", "))")
+        }
+        .alert("Couldn't Signal Process", isPresented: Binding(get: { store.controlError != nil },
+                                                              set: { if !$0 { store.controlError = nil } }),
+               presenting: store.controlError) { error in
+            if let retry = error.retry {
+                Button("Retry as Administrator…") { store.perform(retry, asAdmin: true) }
+            }
+            Button("OK", role: .cancel) {}
+        } message: { error in
+            Text(error.message)
+        }
+    }
+
+    private var confirmTitle: String {
+        guard let pending = store.pendingSignal else { return "" }
+        let target = pending.names.count == 1 ? "“\(pending.names[0])”" : "\(pending.names.count) processes"
+        switch pending.signal.number {
+        case SIGKILL: return "Force quit \(target)?"
+        case SIGTERM: return "Quit \(target)?"
+        default: return "Send \(pending.signal.name) to \(target)?"
+        }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        switch store.section ?? .overview {
+        case .overview: OverviewView()
+        case .processes: ProcessesView()
+        case .cpu: CPUView()
+        case .memory: MemoryView()
+        case .disks: DisksView()
+        case .network: NetworkView()
+        case .sensors: SensorsView()
+        case .battery: BatteryView()
+        }
+    }
+}
+
+/// Sidebar with live mini-graphs next to each section.
+private struct Sidebar: View {
+    @Environment(SystemStore.self) private var store
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        @Bindable var store = store
+        List(selection: $store.section) {
+            Section("Monitor") {
+                row(.overview, value: nil)
+                row(.processes, value: store.snapshot.map { "\($0.cpu.processCount)" })
+            }
+            Section("Resources") {
+                row(.cpu, value: store.snapshot.map { Fmt.percent($0.cpu.total, digits: 0) },
+                    graph: store.cpuTotal.values, max: 1, color: theme.cpu)
+                row(.memory, value: store.snapshot.map { Fmt.percent($0.memory.usedFraction, digits: 0) },
+                    graph: store.memUsed.values, max: 1, color: theme.memApp)
+                row(.disks, value: store.snapshot.map { Fmt.rate($0.disks.readRate + $0.disks.writeRate) },
+                    graph: zip(store.diskRead.values, store.diskWrite.values).map(+), max: 1, color: theme.diskRead)
+                row(.network, value: store.snapshot.map { Fmt.rate($0.network.rateIn + $0.network.rateOut) },
+                    graph: zip(store.netIn.values, store.netOut.values).map(+), max: 1, color: theme.netIn)
+                row(.sensors, value: store.snapshot?.gpu.map { Fmt.percent($0.utilization, digits: 0) },
+                    graph: store.gpu.values, max: 1, color: theme.gpu)
+                if store.snapshot?.battery != nil {
+                    row(.battery, value: store.snapshot?.battery.map { Fmt.percent($0.charge, digits: 0) })
+                }
+            }
+        }
+        .listStyle(.sidebar)
+    }
+
+    private func row(_ section: AppSection, value: String?, graph: [Double]? = nil, max: Double = 1, color: Color = .accentColor) -> some View {
+        HStack(spacing: 6) {
+            Label(section.title, systemImage: section.symbol)
+            Spacer(minLength: 4)
+            if let graph, graph.count > 1 {
+                Sparkline(values: Array(graph.suffix(30)), maxValue: max, color: color, capacity: 30)
+                    .frame(width: 36, height: 14)
+            }
+            if let value {
+                Text(value).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+            }
+        }
+        .tag(section)
+    }
+}
