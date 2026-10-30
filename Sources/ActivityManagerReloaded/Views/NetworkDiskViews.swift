@@ -36,7 +36,8 @@ struct NetworkPanel: View {
     }
 }
 
-struct NetworkView: View {
+/// The original Network page: totals, throughput chart and interfaces. Needs no connection data.
+struct NetworkOverviewPage: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
     @AppStorage("network.interface") private var selected = ""

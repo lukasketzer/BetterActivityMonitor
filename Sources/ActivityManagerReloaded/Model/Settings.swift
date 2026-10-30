@@ -6,6 +6,7 @@ enum SettingsKey {
     static let historyLength = "historyLength"
     static let theme = "theme"
     static let graphStyle = "graphStyle"
+    static let backgroundGradient = "backgroundGradient"
     static let fahrenheit = "fahrenheit"
     static let cpuPerCore = "cpuPerCore"
     static let useRegex = "useRegex"
@@ -23,6 +24,15 @@ enum SettingsKey {
     static let overviewProcesses = "overview.processes"
     static let treeView = "treeView"
     static let processScope = "processScope"
+    static let networkPage = "network.page"
+    static let networkShowLoopback = "network.showLoopback"
+    static let freezeDuringResize = "freezeDuringResize"
+}
+
+enum NetworkPage: String, CaseIterable, Identifiable {
+    case overview, connections, listening, log
+    var id: String { rawValue }
+    var label: String { rawValue.capitalized }
 }
 
 enum GraphStyle: String, CaseIterable, Identifiable {
@@ -38,11 +48,12 @@ enum Defaults {
             SettingsKey.historyLength: 120,
             SettingsKey.theme: Theme.system.id,
             SettingsKey.graphStyle: GraphStyle.area.rawValue,
+            SettingsKey.backgroundGradient: true,
             SettingsKey.fahrenheit: false,
             SettingsKey.cpuPerCore: true,
             SettingsKey.useRegex: false,
             SettingsKey.confirmKill: true,
-            SettingsKey.showMenuBarExtra: true,
+            SettingsKey.showMenuBarExtra: false,
             SettingsKey.menuBarShowsCPU: true,
             SettingsKey.menuBarShowsMemory: true,
             SettingsKey.menuBarShowsNetwork: false,
@@ -53,8 +64,11 @@ enum Defaults {
             SettingsKey.overviewSensors: true,
             SettingsKey.overviewGPU: true,
             SettingsKey.overviewProcesses: true,
+            SettingsKey.freezeDuringResize: true,
             SettingsKey.treeView: false,
             SettingsKey.processScope: ProcessScope.all.rawValue,
+            SettingsKey.networkPage: NetworkPage.overview.rawValue,
+            SettingsKey.networkShowLoopback: false,
         ])
     }
 

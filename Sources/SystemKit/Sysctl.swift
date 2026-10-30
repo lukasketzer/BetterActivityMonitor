@@ -18,11 +18,12 @@ enum Sysctl {
         return String(cString: buffer)
     }
 
-    static func value<T>(_ name: String, as _: T.Type, initial: T) -> T? {
+    /// Reads a fixed-size value; `T` must be a plain C type (integers, timeval, xsw_usage, …).
+    static func value<T: BitwiseCopyable>(_ name: String, as _: T.Type, initial: T) -> T? {
         var value = initial
         var size = MemoryLayout<T>.size
-        guard sysctlbyname(name, &value, &size, nil, 0) == 0 else { return nil }
-        return value
+        let ok = withUnsafeMutableBytes(of: &value) { sysctlbyname(name, $0.baseAddress, &size, nil, 0) == 0 }
+        return ok ? value : nil
     }
 }
 

@@ -14,8 +14,11 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 300)
         } detail: {
             detail
+                .modifier(FreezeDuringLiveResize())
                 .navigationTitle(store.section?.title ?? "ActivityManagerReloaded")
         }
+        // Showing the sidebar pushes the detail aside instead of floating over it.
+        .navigationSplitViewStyle(.balanced)
         .environment(\.theme, theme)
         .tint(theme.accent)
         .preferredColorScheme(theme.prefersDark ? .dark : nil)
@@ -66,6 +69,32 @@ struct ContentView: View {
         case .sensors: SensorsView()
         case .battery: BatteryView()
         }
+    }
+}
+
+/// Keeps the detail content at its pre-resize size (pinned top-left) while the window is being
+/// resized, then lays it out once at the final size. SwiftUI otherwise recomputes the whole page on every
+/// drag frame (~34 ms on the Overview, twice the 60 fps budget); with an unchanged size it has nothing to redo.
+private struct FreezeDuringLiveResize: ViewModifier {
+    @Environment(SystemStore.self) private var store
+    @AppStorage(SettingsKey.freezeDuringResize) private var enabled = true
+    @State private var size: CGSize = .zero
+
+    func body(content: Content) -> some View {
+        let resizing = store.isLiveResizing || store.simulatedLiveResize
+        let frozen = enabled && resizing && size != .zero
+        content
+            .frame(width: frozen ? size.width : nil, height: frozen ? size.height : nil)
+            // min 0: the wrapper always takes the window's size, so frozen content larger than the window
+            // runs off the bottom/right edge instead of growing the wrapper and getting centred. No .clipped():
+            // it pushed the page out of the safe area, under the sidebar and toolbar.
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { newSize in
+                // A start notification without a matching end (e.g. the system constraining the window)
+                // must not leave the page frozen: only a resize actually in progress counts.
+                if store.isLiveResizing, !NSApp.windows.contains(where: \.inLiveResize) { store.isLiveResizing = false }
+                if !(store.isLiveResizing || store.simulatedLiveResize) { size = newSize }
+            }
     }
 }
 

@@ -14,6 +14,8 @@ public struct SystemSnapshot: Sendable {
     /// Fan speeds in RPM.
     public var fans: [Double]
     public var processes: [ProcessEntry]
+    /// Nil unless connection tracking is on (`SystemMonitor.setConnectionMode`).
+    public var connections: ConnectionStats?
 }
 
 // MARK: CPU

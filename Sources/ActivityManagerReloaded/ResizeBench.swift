@@ -6,8 +6,6 @@ import AppKit
 /// Used by scripts/resize-bench.sh and AppResizeTests. 60 fps leaves 16.7 ms per frame.
 @MainActor
 enum ResizeBench {
-    static var isRunning = false
-
     static func runIfRequested() {
         let env = ProcessInfo.processInfo.environment
         guard let reportPath = env["BAM_RESIZE_BENCH"] else { return }
@@ -27,7 +25,8 @@ enum ResizeBench {
                 DebugSnapshot.store?.section = section
                 window.setFrame(original, display: true)
                 try? await Task.sleep(for: .seconds(2.2))
-                isRunning = true
+                // Same state a real drag produces, so the benchmark measures what users get.
+                DebugSnapshot.store?.simulatedLiveResize = true
                 var times: [Double] = []
                 for i in 0..<frames {
                     // Triangle wave between the minimum size and +600 × +400 pt, like a drag back and forth.
@@ -41,7 +40,7 @@ enum ResizeBench {
                     // Let the run loop breathe like it would between drag events.
                     try? await Task.sleep(for: .milliseconds(4))
                 }
-                isRunning = false
+                DebugSnapshot.store?.simulatedLiveResize = false
                 let sorted = times.sorted()
                 let median = sorted[sorted.count / 2]
                 let p95 = sorted[Int(Double(sorted.count - 1) * 0.95)]

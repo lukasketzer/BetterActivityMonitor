@@ -50,17 +50,20 @@ struct GlassGroup<Content: View>: View {
 struct AmbientBackground: View {
     @Environment(\.theme) private var theme
     @Environment(\.colorScheme) private var scheme
+    @AppStorage(SettingsKey.backgroundGradient) private var gradient = true
 
     var body: some View {
         let strength = scheme == .dark ? 0.22 : 0.14
         ZStack {
             Rectangle().fill(.background)
+            if gradient {
             RadialGradient(colors: [theme.cpuUser.opacity(strength), .clear],
                            center: .topLeading, startRadius: 0, endRadius: 700)
             RadialGradient(colors: [theme.memCompressed.opacity(strength), .clear],
                            center: .bottomTrailing, startRadius: 0, endRadius: 800)
             RadialGradient(colors: [theme.netIn.opacity(strength * 0.7), .clear],
                            center: .topTrailing, startRadius: 0, endRadius: 600)
+            }
         }
         .ignoresSafeArea()
     }

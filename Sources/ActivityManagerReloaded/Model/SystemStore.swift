@@ -74,6 +74,9 @@ final class SystemStore {
     private(set) var sensorMax: [String: Double] = [:]
     private(set) var processCPU: [pid_t: History] = [:]
     private(set) var processMemory: [pid_t: History] = [:]
+    /// Opened/closed connections, newest first; only recorded while connection tracking is on.
+    private(set) var connectionLog: [ConnectionEvent] = []
+    var connectionLogPaused = false
 
     /// Processes as shown in tables; frozen while `paused`.
     private(set) var processes: [ProcessEntry] = []
@@ -86,6 +89,10 @@ final class SystemStore {
     var selection: Set<pid_t> = []
     var showInspector = false
     var paused = false
+    /// True while the user drags the window edge; the detail area freezes and sampling pauses meanwhile.
+    var isLiveResizing = false
+    /// Set by ResizeBench to get the same behaviour without a real drag.
+    var simulatedLiveResize = false
     var filterText = ""
     var collapsed: Set<pid_t> = []
     var pendingSignal: PendingSignal?
@@ -111,6 +118,11 @@ final class SystemStore {
                 MainActor.assumeIsolated { self?.appsDirty = true }
             }
         }
+        for (name, resizing) in [(NSWindow.willStartLiveResizeNotification, true), (NSWindow.didEndLiveResizeNotification, false)] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.isLiveResizing = resizing }
+            }
+        }
     }
 
     func start() {
@@ -120,7 +132,7 @@ final class SystemStore {
                 guard let monitor = self?.monitor else { return }
                 let snapshot = await monitor.sample()
                 // During a live resize only layout should run on the main thread; resume afterwards.
-                if ResizeBench.isRunning || NSApp.windows.contains(where: \.inLiveResize) {
+                if self?.simulatedLiveResize == true || NSApp.windows.contains(where: \.inLiveResize) {
                     try? await Task.sleep(for: .milliseconds(200))
                     continue
                 }
@@ -135,6 +147,14 @@ final class SystemStore {
         let monitor = monitor
         Task { await monitor.setDetailedSensors(on) }
     }
+
+    /// Connection data spawns `nettop` every tick, so views turn it on only while they are visible.
+    func setConnectionMode(_ mode: ConnectionMode) {
+        let monitor = monitor
+        Task { await monitor.setConnectionMode(mode) }
+    }
+
+    func clearConnectionLog() { connectionLog = [] }
 
     var coreCount: Int { max(snapshot?.cpu.cores.count ?? 1, 1) }
     var cpuTemperatureNow: Double? { cpuTemperature.points.isEmpty ? nil : cpuTemperature.last }
@@ -228,6 +248,15 @@ final class SystemStore {
             }
             processCPU = nextCPU
             processMemory = nextMem
+        }
+
+        // Only diff samples taken in the same mode; switching modes changes which flows are visible.
+        if let new = s.connections, let old = snapshot?.connections, old.mode == new.mode, !connectionLogPaused {
+            let events = ConnectionLog.events(from: old.flows, to: new.flows, at: date)
+            if !events.isEmpty {
+                connectionLog.insert(contentsOf: events, at: 0)
+                if connectionLog.count > ConnectionLog.capacity { connectionLog.removeLast(connectionLog.count - ConnectionLog.capacity) }
+            }
         }
 
         if appsDirty {

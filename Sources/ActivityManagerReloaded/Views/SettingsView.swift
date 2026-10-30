@@ -17,6 +17,7 @@ private struct GeneralSettings: View {
     @AppStorage(SettingsKey.refreshInterval) private var interval = 1.0
     @AppStorage(SettingsKey.historyLength) private var history = 120
     @AppStorage(SettingsKey.fahrenheit) private var fahrenheit = false
+    @AppStorage(SettingsKey.freezeDuringResize) private var freezeDuringResize = true
 
     var body: some View {
         Form {
@@ -35,6 +36,9 @@ private struct GeneralSettings: View {
                 Text("Fahrenheit").tag(true)
             }
             .pickerStyle(.segmented)
+            Toggle("Freeze content while resizing the window", isOn: $freezeDuringResize)
+            Text("Keeps the page still while you drag the window edge and lays it out once when you let go. Resizing stays smooth; turn it off to see the layout adapt live.")
+                .font(.caption).foregroundStyle(.secondary)
         }
         .formStyle(.grouped)
     }
@@ -43,6 +47,7 @@ private struct GeneralSettings: View {
 private struct AppearanceSettings: View {
     @AppStorage(SettingsKey.theme) private var themeID = Theme.system.id
     @AppStorage(SettingsKey.graphStyle) private var graphStyle: GraphStyle = .area
+    @AppStorage(SettingsKey.backgroundGradient) private var gradient = true
 
     var body: some View {
         Form {
@@ -60,6 +65,7 @@ private struct AppearanceSettings: View {
                 ForEach(GraphStyle.allCases) { Text($0.label).tag($0) }
             }
             .pickerStyle(.segmented)
+            Toggle("Colored background gradient", isOn: $gradient)
         }
         .formStyle(.grouped)
     }
@@ -104,7 +110,7 @@ private struct ProcessSettings: View {
 }
 
 private struct MenuBarSettings: View {
-    @AppStorage(SettingsKey.showMenuBarExtra) private var show = true
+    @AppStorage(SettingsKey.showMenuBarExtra) private var show = false
     @AppStorage(SettingsKey.menuBarShowsCPU) private var cpu = true
     @AppStorage(SettingsKey.menuBarShowsMemory) private var memory = true
     @AppStorage(SettingsKey.menuBarShowsNetwork) private var network = false

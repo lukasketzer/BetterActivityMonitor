@@ -3,7 +3,8 @@ import AppKit
 /// Developer aid: `BAM_SNAPSHOT_DIR=/some/dir` renders every section of the main window to
 /// `<section>-<w>x<h>.png` for each size in `BAM_SNAPSHOT_SIZES` (default "1280x820"), writes the
 /// `LayoutAudit` findings to `layout-report.txt` (issue lines; "#" lines are per-screen summaries), restores the window frame and quits.
-/// `BAM_SNAPSHOT_SECTIONS` (comma separated) limits the sections. Used by scripts/check-layout.sh.
+/// `BAM_SNAPSHOT_SECTIONS` (comma separated) limits the sections; `BAM_SNAPSHOT_SIDEBAR_CYCLE=1` collapses and
+/// re-expands the sidebar before capturing. Used by scripts/check-layout.sh.
 @MainActor
 enum DebugSnapshot {
     static weak var store: SystemStore?
@@ -25,6 +26,13 @@ enum DebugSnapshot {
                 return
             }
             let originalFrame = window.frame
+            if env["BAM_SNAPSHOT_SIDEBAR_CYCLE"] != nil {
+                // Collapse and re-expand the sidebar first: checks that showing it pushes the content aside.
+                for _ in 0..<2 {
+                    NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
+                    try? await Task.sleep(for: .seconds(1.5))
+                }
+            }
             var report: [String] = []
             for size in sizes {
                 window.setContentSize(size)
@@ -61,7 +69,7 @@ enum DebugSnapshot {
         try? text.write(to: URL(fileURLWithPath: dir).appendingPathComponent("layout-report.txt"), atomically: true, encoding: .utf8)
     }
 
-    private static func capture(_ window: NSWindow, to url: URL) {
+    static func capture(_ window: NSWindow, to url: URL) {
         guard let view = window.contentView?.superview ?? window.contentView,
               let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
         view.cacheDisplay(in: view.bounds, to: rep)

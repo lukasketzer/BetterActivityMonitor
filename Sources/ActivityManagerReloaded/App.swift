@@ -4,7 +4,7 @@ import SwiftUI
 struct ActivityManagerReloadedApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var store = SystemStore()
-    @AppStorage(SettingsKey.showMenuBarExtra) private var showMenuBarExtra = true
+    @AppStorage(SettingsKey.showMenuBarExtra) private var showMenuBarExtra = false
 
     var body: some Scene {
         Window("ActivityManagerReloaded", id: "main") {

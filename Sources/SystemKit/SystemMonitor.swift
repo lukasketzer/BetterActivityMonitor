@@ -10,6 +10,7 @@ public actor SystemMonitor {
     private let gpu = GPUSampler()
     private let battery = BatterySampler()
     private let sensors = TemperatureSampler()
+    private let connections = ConnectionSampler()
     private var lastSample: Date?
     private var tick = 0
     /// Wall-clock milliseconds each sampler took in the last `sample()`; used by the benchmark.
@@ -19,6 +20,9 @@ public actor SystemMonitor {
 
     /// Read every temperature sensor (costly) instead of a representative subset.
     public func setDetailedSensors(_ on: Bool) { sensors.detailed = on }
+
+    /// Per-connection data costs a `nettop` run per tick, so it is only sampled while something shows it.
+    public func setConnectionMode(_ mode: ConnectionMode) { connections.mode = mode }
 
     public func sample() -> SystemSnapshot {
         let now = Date()
@@ -47,7 +51,8 @@ public actor SystemMonitor {
             battery: timed("battery") { battery.sample() },
             sensors: temps.sensors,
             fans: temps.fans,
-            processes: procs
+            processes: procs,
+            connections: timed("connections") { connections.sample(now: now) }
         )
         lastTimings = timings.map { (name: $0.0, ms: $0.1) }
         return snapshot

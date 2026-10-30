@@ -32,10 +32,11 @@ Run the performance tests in release mode. Debug builds are several times slower
 | Tool | Use |
 |---|---|
 | `swift run -c release sysbench` | Median/max time of every sampler and CPU ms per tick |
-| `scripts/measure-screens.sh [seconds] [screen …]` | App CPU % per screen with its window frontmost (`APP_ENV="K=V"` passes env to the app) |
+| `swift run -c release sysbench nettop [seconds]` | CPU cost of the Network tab's connection data: one `nettop` run per tick vs. its streaming mode, and `SystemMonitor` per tick in each `ConnectionMode` (own + nettop CPU) |
+| `scripts/measure-screens.sh [seconds] [screen …]` | App CPU % per screen with its window frontmost (`APP_ENV="K=V"` passes env to the app). Network pages as `network:connections`, `network:listening`, `network:log` (or `BAM_NETWORK_PAGE=…`); nettop's own CPU isn't included, see `sysbench nettop` |
 | `scripts/hot-frames.sh [seconds] [regex]` | `sample`s the newest running instance (`PID=` to pick one) and prints the heaviest app/UI frames |
 | `scripts/check-layout.sh [out-dir] [sizes] [sections]` | Same layout audit by hand; PNGs + `layout-report.txt` land in `build/layout` |
-| `scripts/resize-bench.sh [screens] [frames]` | Times every window-resize frame (layout + display) per screen: median / p95 / max ms, frames over the 16.7 ms 60 fps budget. `APP_ARGS="-overview.cpu NO"` / `APP_ENV="BAM_NO_GLASS=1"` for A/B runs |
+| `scripts/resize-bench.sh [screens] [frames]` | Times every window-resize frame (layout + display) per screen: median / p95 / max ms, frames over the 16.7 ms 60 fps budget. Freezing during resize is on by default; `APP_ARGS="-freezeDuringResize NO"` measures live relayout. `APP_ARGS="-overview.cpu NO"` / `APP_ENV="BAM_NO_GLASS=1"` for A/B runs |
 | `scripts/make-icon.sh` | Regenerates the app icon (`Resources/AppIcon.icns` + `Resources/AppIcon.icon`) from `scripts/make-icon.swift` |
 | `scripts/cputime.sh <pid>` | Total CPU seconds a process has used |
 

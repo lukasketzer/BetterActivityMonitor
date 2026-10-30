@@ -2,6 +2,14 @@ import Foundation
 import SystemKit
 
 // Measures each sampler's cost: `swift run -c release sysbench [iterations]`.
+// `sysbench nettop [seconds]` instead compares the CPU cost of the two ways to read connection data.
+if CommandLine.arguments.dropFirst().first == "nettop" {
+    let seconds = Double(CommandLine.arguments.dropFirst(2).first ?? "") ?? 10
+    NettopBench.run(seconds: seconds)
+    await NettopBench.runModes(ticks: Int(seconds))
+    exit(0)
+}
+
 let iterations = Int(CommandLine.arguments.dropFirst().first ?? "") ?? 20
 let monitor = SystemMonitor()
 _ = await monitor.sample()

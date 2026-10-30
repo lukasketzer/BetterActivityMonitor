@@ -1,0 +1,4 @@
+- home scree widgets
+- better settings
+- better network tab (nettop etc)
+- 
