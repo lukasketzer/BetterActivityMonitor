@@ -41,8 +41,9 @@ final class ProcessRowTests: XCTestCase {
     }
 
     func testPlainQueryMatchesWholePIDOnly() {
-        XCTAssertTrue(ProcessRowBuilder.matches(row(1234), query: "1234", regex: nil))
-        XCTAssertFalse(ProcessRowBuilder.matches(row(1234), query: "123", regex: nil))
+        let daemon = row(1234, name: "daemon")
+        XCTAssertTrue(ProcessRowBuilder.matches(daemon, query: "1234", regex: nil))
+        XCTAssertFalse(ProcessRowBuilder.matches(daemon, query: "123", regex: nil))
     }
 
     func testRegexQuery() throws {
