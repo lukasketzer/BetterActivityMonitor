@@ -1,0 +1,84 @@
+name: Release
+
+# Push a tag like v0.2.0 to build, package and publish a GitHub Release.
+# Optional secrets turn on Developer ID signing and notarization; without them the build is ad-hoc signed:
+#   DEVELOPER_ID_CERT_P12      base64 of the "Developer ID Application" certificate exported as .p12
+#   DEVELOPER_ID_CERT_PASSWORD password of that .p12
+#   NOTARY_APPLE_ID, NOTARY_TEAM_ID, NOTARY_PASSWORD (app-specific password) for notarytool
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      HAS_CERT: ${{ secrets.DEVELOPER_ID_CERT_P12 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest Xcode
+        run: sudo xcode-select -s "$(find /Applications -maxdepth 1 -name 'Xcode*.app' | sort -V | tail -1)"
+
+      - name: Test
+        run: swift test -c release --skip SamplerPerformanceTests --skip AppPerformanceTests
+
+      - name: Import Developer ID certificate
+        id: cert
+        env:
+          CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+        if: env.HAS_CERT == 'true'
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "$CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | grep -o '"Developer ID Application:[^"]*"' | head -1 | tr -d '"')"
+          echo "identity=$IDENTITY" >> "$GITHUB_OUTPUT"
+          rm "$RUNNER_TEMP/cert.p12"
+
+      - name: Package
+        env:
+          VERSION: ${{ github.ref_name }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          DEVELOPER_ID: ${{ steps.cert.outputs.identity }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: VERSION="${VERSION#v}" scripts/package.sh
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          NOTARIZED: ${{ steps.cert.outputs.identity != '' && secrets.NOTARY_PASSWORD != '' }}
+        run: |
+          VERSION="${TAG#v}"
+          NOTES="$RUNNER_TEMP/notes.md"
+          # The CHANGELOG section for this version, if there is one.
+          awk -v v="$VERSION" '$0 ~ "^## \\[?"v"\\]?" {on=1; next} /^## / && on {exit} on' CHANGELOG.md > "$NOTES"
+          if [[ "$NOTARIZED" != "true" ]]; then
+            cat >> "$NOTES" <<'EOF'
+
+          > **First launch:** this build is not notarized. Right-click the app → **Open**, or run
+          > `xattr -dr com.apple.quarantine /Applications/BetterActivityMonitor.app`.
+          EOF
+          fi
+          FLAGS=()
+          [[ "$VERSION" == *-* ]] && FLAGS+=(--prerelease)
+          gh release create "$TAG" --title "BetterActivityMonitor $VERSION" --notes-file "$NOTES" --generate-notes "${FLAGS[@]}" \
+            "build/BetterActivityMonitor-$VERSION.dmg" "build/BetterActivityMonitor-$VERSION.zip" build/SHA256SUMS
+
+      - name: Clean up keychain
+        if: always() && steps.cert.outputs.identity != ''
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
