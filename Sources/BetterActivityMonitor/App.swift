@@ -1,13 +1,13 @@
 import SwiftUI
 
 @main
-struct ActivityManagerReloadedApp: App {
+struct BetterActivityMonitorApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var store = SystemStore()
     @AppStorage(SettingsKey.showMenuBarExtra) private var showMenuBarExtra = false
 
     var body: some Scene {
-        Window("ActivityManagerReloaded", id: "main") {
+        Window("BetterActivityMonitor", id: "main") {
             ContentView()
                 .environment(store)
                 .frame(minWidth: 900, minHeight: 560)

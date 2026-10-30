@@ -3,8 +3,8 @@
 # filtered to the app and UI frameworks. Usage: [PID=n] [TOP=n] scripts/hot-frames.sh [seconds] [filter-regex]
 set -euo pipefail
 SECONDS_TO_SAMPLE="${1:-8}"
-FILTER="${2:-ActivityManagerReloaded\)|AppKit\)|SwiftUI\)|SwiftUICore\)|QuartzCore\)|AttributeGraph\)|IOKit\)}"
-pid="${PID:-$(pgrep -nf "MacOS/ActivityManagerReloaded")}"  # newest instance unless PID is given
+FILTER="${2:-BetterActivityMonitor\)|AppKit\)|SwiftUI\)|SwiftUICore\)|QuartzCore\)|AttributeGraph\)|IOKit\)}"
+pid="${PID:-$(pgrep -nf "MacOS/BetterActivityMonitor")}"  # newest instance unless PID is given
 out="$(mktemp -t bam-sample).txt"
 sample "$pid" "$SECONDS_TO_SAMPLE" -file "$out" >/dev/null 2>&1
 echo "full report: $out"

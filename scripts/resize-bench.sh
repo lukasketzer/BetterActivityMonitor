@@ -10,7 +10,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 SECTIONS="${1:-}"
 FRAMES="${2:-150}"
-BIN="build/ActivityManagerReloaded.app/Contents/MacOS/ActivityManagerReloaded"
+BIN="build/BetterActivityMonitor.app/Contents/MacOS/BetterActivityMonitor"
 REPORT="build/resize-bench.txt"
 [[ -x "$BIN" ]] || scripts/bundle.sh >/dev/null
 rm -f "$REPORT"

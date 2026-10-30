@@ -12,7 +12,7 @@ cd "$(dirname "$0")/.."
 OUT="${1:-build/layout}"
 SIZES="${2:-900x560,1100x700,1400x900}"
 SECTIONS="${3:-}"
-BIN="build/ActivityManagerReloaded.app/Contents/MacOS/ActivityManagerReloaded"
+BIN="build/BetterActivityMonitor.app/Contents/MacOS/BetterActivityMonitor"
 
 [[ -x "$BIN" ]] || scripts/bundle.sh >/dev/null
 rm -rf "$OUT"

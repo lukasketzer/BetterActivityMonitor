@@ -7,7 +7,7 @@ import XCTest
 /// Background load on the machine adds noise (±4 points observed), so budgets leave headroom.
 final class AppCPUTests: XCTestCase {
     private static let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-    private static let app = root.appendingPathComponent("build/ActivityManagerReloaded.app")
+    private static let app = root.appendingPathComponent("build/BetterActivityMonitor.app")
     private let warmup: TimeInterval = 12
     private let window: TimeInterval = 20
 
@@ -31,7 +31,7 @@ final class AppCPUTests: XCTestCase {
         try shell("/usr/bin/open", ["-n", "--env", "BAM_START_SECTION=\(screen)", Self.app.path])
         defer { kill() }
         Thread.sleep(forTimeInterval: warmup)
-        let pid = try XCTUnwrap(Int32(try shell("/usr/bin/pgrep", ["-f", "MacOS/ActivityManagerReloaded"])
+        let pid = try XCTUnwrap(Int32(try shell("/usr/bin/pgrep", ["-f", "MacOS/BetterActivityMonitor"])
             .split(separator: "\n").first.map(String.init) ?? ""), "app did not start")
         let start = try cpuSeconds(pid)
         Thread.sleep(forTimeInterval: window)
@@ -51,7 +51,7 @@ final class AppCPUTests: XCTestCase {
     }
 
     private func kill() {
-        _ = try? shell("/usr/bin/pkill", ["-f", "MacOS/ActivityManagerReloaded"])
+        _ = try? shell("/usr/bin/pkill", ["-f", "MacOS/BetterActivityMonitor"])
         Thread.sleep(forTimeInterval: 1)
     }
 

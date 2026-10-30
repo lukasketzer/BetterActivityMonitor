@@ -1,4 +1,4 @@
-# ActivityManagerReloaded
+# BetterActivityMonitor
 
 A native macOS system monitor with btop's feature set: CPU (per core, P/E), memory, GPU, network, disks,
 temperatures, fans and battery, plus a fast, sortable process table with a tree view, signals, renice and
@@ -7,14 +7,14 @@ an inspector. It's built with SwiftUI, AppKit's NSTableView and Liquid Glass.
 ## Build & run
 
 ```sh
-scripts/bundle.sh                     # release build → build/ActivityManagerReloaded.app (ad-hoc signed)
-open build/ActivityManagerReloaded.app
+scripts/bundle.sh                     # release build → build/BetterActivityMonitor.app (ad-hoc signed)
+open build/BetterActivityMonitor.app
 ```
 
 `bundle.sh` restamps the binary with the installed SDK version (`vtool`). SwiftPM otherwise stamps
 SDK 14.0, which makes macOS fall back to the legacy window chrome.
 
-Layout: `Sources/SystemKit` holds the data samplers (no UI). `Sources/ActivityManagerReloaded` is the app.
+Layout: `Sources/SystemKit` holds the data samplers (no UI). `Sources/BetterActivityMonitor` is the app.
 
 ## Tests
 

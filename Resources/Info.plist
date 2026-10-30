@@ -5,19 +5,19 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>ActivityManagerReloaded</string>
+    <string>BetterActivityMonitor</string>
     <key>CFBundleExecutable</key>
-    <string>ActivityManagerReloaded</string>
+    <string>BetterActivityMonitor</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIconName</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>dev.lukas.ActivityManagerReloaded</string>
+    <string>dev.lukas.BetterActivityMonitor</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>ActivityManagerReloaded</string>
+    <string>BetterActivityMonitor</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

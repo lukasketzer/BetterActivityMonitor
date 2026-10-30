@@ -12,7 +12,7 @@ SECONDS_PER_SCREEN="${1:-30}"
 shift || true
 SCREENS=("${@:-overview processes cpu memory battery}")
 [[ $# -eq 0 ]] && SCREENS=(overview processes cpu memory battery)
-APP="build/ActivityManagerReloaded.app"
+APP="build/BetterActivityMonitor.app"
 WARMUP=12
 
 [[ -d "$APP" ]] || scripts/bundle.sh >/dev/null
@@ -22,17 +22,17 @@ for kv in ${=APP_ENV:-}; do env_args+=(--env "$kv"); done
 
 printf "%-20s %10s\n" "screen" "cpu %"
 for screen in $SCREENS; do
-  pkill -f "MacOS/ActivityManagerReloaded" 2>/dev/null || true
+  pkill -f "MacOS/BetterActivityMonitor" 2>/dev/null || true
   sleep 1
   section=${screen%%:*}
   page_args=()
   [[ "$screen" == *:* ]] && page_args=(--env "BAM_NETWORK_PAGE=${screen#*:}")
   open -n --env "BAM_START_SECTION=$section" "${page_args[@]}" "${env_args[@]}" "$APP"
   sleep $WARMUP
-  pid=$(pgrep -f "MacOS/ActivityManagerReloaded")
+  pid=$(pgrep -f "MacOS/BetterActivityMonitor")
   t0=$(scripts/cputime.sh "$pid")
   sleep "$SECONDS_PER_SCREEN"
   t1=$(scripts/cputime.sh "$pid")
   printf "%-20s %10.1f\n" "$screen" $(( (t1 - t0) * 100.0 / SECONDS_PER_SCREEN ))
 done
-pkill -f "MacOS/ActivityManagerReloaded" 2>/dev/null || true
+pkill -f "MacOS/BetterActivityMonitor" 2>/dev/null || true

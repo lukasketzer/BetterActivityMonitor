@@ -1,4 +1,4 @@
-// Generates the ActivityManagerReloaded app icon.
+// Generates the BetterActivityMonitor app icon.
 //
 // Usage: swift scripts/make-icon.swift <output-dir>
 //   Writes <output-dir>/AppIcon.iconset/*.png and <output-dir>/AppIcon-1024.png (legacy .icns art with

@@ -25,10 +25,10 @@ let currentDesign: [LinkerSetting] = sdkVersion.map {
 } ?? []
 
 let package = Package(
-    name: "ActivityManagerReloaded",
+    name: "BetterActivityMonitor",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "ActivityManagerReloaded", targets: ["ActivityManagerReloaded"]),
+        .executable(name: "BetterActivityMonitor", targets: ["BetterActivityMonitor"]),
         .library(name: "SystemKit", targets: ["SystemKit"]),
     ],
     targets: [
@@ -40,7 +40,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "ActivityManagerReloaded",
+            name: "BetterActivityMonitor",
             dependencies: ["SystemKit"],
             linkerSettings: currentDesign
         ),

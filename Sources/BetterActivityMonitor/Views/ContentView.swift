@@ -15,7 +15,7 @@ struct ContentView: View {
         } detail: {
             detail
                 .modifier(FreezeDuringLiveResize())
-                .navigationTitle(store.section?.title ?? "ActivityManagerReloaded")
+                .navigationTitle(store.section?.title ?? "BetterActivityMonitor")
         }
         // Showing the sidebar pushes the detail aside instead of floating over it.
         .navigationSplitViewStyle(.balanced)
