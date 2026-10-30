@@ -52,6 +52,11 @@ let package = Package(
             name: "SystemKitTests",
             dependencies: ["SystemKit"]
         ),
+        // Pure app logic (formatting, history, process tree, connection filter) via @testable import.
+        .testTarget(
+            name: "AppModelTests",
+            dependencies: ["BetterActivityMonitor", "SystemKit"]
+        ),
         // Launches the bundled app and checks its CPU use per screen. Opt-in: BAM_APP_PERF=1 (see README).
         .testTarget(
             name: "AppPerformanceTests"
