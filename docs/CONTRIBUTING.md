@@ -10,7 +10,7 @@ report problems, set up the project, find your way around the code, and check a 
 - [Tests](#tests)
 - [Profiling and benchmarking](#profiling-and-benchmarking)
 - [Developer environment variables](#developer-environment-variables)
-- [Releasing](#releasing)
+- [Versioning and releases](#versioning-and-releases)
 
 ## Reporting bugs and requesting features
 
@@ -36,6 +36,16 @@ scripts/bundle.sh                     # release build → build/BetterActivityMo
 open build/BetterActivityMonitor.app
 ```
 
+There are two builds of the same sources:
+
+- **SwiftPM** (`Package.swift`, `scripts/bundle.sh`): the app without the widgets. Quick to build, and what the
+  tests, benchmarks and profiling scripts use.
+- **Xcode** (`BetterActivityMonitor.xcodeproj`): the app with the desktop widgets embedded, which is what releases
+  ship. `scripts/build-app.sh` builds it ad-hoc signed into `build/xcode/Release`. `scripts/widgets.sh` builds a
+  Debug copy signed with your development certificate, registers it and opens it, so the widget gallery shows the
+  latest widgets. New files in `Sources/BetterActivityMonitor` and `Sources/BAMWidgets` are picked up
+  automatically. The widgets read the app's history through the app group in `Resources/*.entitlements`.
+
 `bundle.sh` restamps the binary with the installed SDK version (`vtool`). SwiftPM otherwise stamps SDK 14.0,
 which makes macOS fall back to the legacy window chrome. `swift run BetterActivityMonitor` works for quick
 iterations, but only the bundled app gets the right icon and window chrome. `scripts/bundle.sh debug` builds a
@@ -46,13 +56,15 @@ debug bundle.
 | Path | What's in it |
 |---|---|
 | `Sources/SystemKit` | Data samplers: CPU, memory, processes, disks, network, `nettop` connections, GPU, SMC sensors, battery. No UI code; usable as a library |
-| `Sources/BetterActivityMonitor` | The SwiftUI/AppKit app: `Model/` (store, settings, formatting, row building), `Views/` (one file per screen), `Components/` (cards, charts, glass) |
+| `Sources/BetterActivityMonitor` | The SwiftUI/AppKit app: `Model/` (store, settings, formatting, row building), `Views/` (one file per screen), `Components/` (cards, charts, glass, the menu bar glyph) |
+| `Sources/BAMWidgets` | The WidgetKit extension (Xcode build only). It samples with `SystemKit.QuickSample` and reads the app's recent history from `SharedHistory` |
 | `Sources/sysbench` | CLI that benchmarks the samplers |
 | `Tests/SystemKitTests` | Sampler sanity checks, `nettop` parsing, sampler performance budgets |
 | `Tests/AppModelTests` | The app's pure logic, via `@testable import BetterActivityMonitor` |
 | `Tests/AppPerformanceTests` | Opt-in tests that launch the bundled app (CPU budget per screen, layout audit) |
 | `scripts/` | Bundling, packaging, screenshots, profiling and layout tools (see below) |
-| `Resources/` | `Info.plist` and the app icon |
+| `Resources/` | `Info.plist` files, entitlements and the app icon |
+| `BetterActivityMonitor.xcodeproj` | The Xcode project for the app with widgets. Holds the version (`MARKETING_VERSION`) |
 
 ## Making a change
 
@@ -104,7 +116,11 @@ Run the performance tests in release mode. Debug builds are several times slower
 | `scripts/check-layout.sh [out-dir] [sizes] [sections]` | Same layout audit by hand; PNGs + `layout-report.txt` land in `build/layout` |
 | `scripts/resize-bench.sh [screens] [frames]` | Times every window-resize frame (layout + display) per screen: median / p95 / max ms, frames over the 16.7 ms 60 fps budget. Freezing during resize is on by default; `APP_ARGS="-freezeDuringResize NO"` measures live relayout. `APP_ARGS="-overview.cpu NO"` / `APP_ENV="BAM_NO_GLASS=1"` for A/B runs |
 | `scripts/screenshots.sh [out-dir] [sections]` | Captures the README screenshots (real window with Liquid Glass and shadow) into `docs/screenshots`. `SETTLE` = seconds per screen before capture (default 90, so graphs fill), `SIZE` = window size (default 1280x820), `APP_ARGS` / `APP_ENV` for launch args and env. Needs Screen Recording permission for the terminal and the desktop Space to stay visible |
-| `scripts/package.sh` | Release DMG + zip + `SHA256SUMS` in `build/`; Developer ID signing and notarization when `DEVELOPER_ID` / `NOTARY_*` are set |
+| `scripts/check-menubar.sh [out-dir]` | Renders the menu bar item in every style, coloring and appearance at 0, 50 and 100 % into `build/menubar`, fails if it isn't 18 pt tall or changes width with its values, and reports the render time |
+| `scripts/build-app.sh [Release\|Debug]` | The Xcode build with widgets into `build/xcode/<config>`; ad-hoc signed, or with `DEVELOPER_ID` |
+| `scripts/package.sh` | Release DMG + zip + `SHA256SUMS` in `build/`, from `build-app.sh`; Developer ID signing and notarization when `DEVELOPER_ID` / `NOTARY_*` are set |
+| `scripts/version.sh [nightly\|build\|set X.Y.Z]` | Prints or sets the version (see [Versioning](#versioning-and-releases)) |
+| `scripts/release.sh [version] [--push]` | Promotes `main` to a release (see [Versioning](#versioning-and-releases)) |
 | `scripts/make-icon.sh` | Regenerates the app icon (`Resources/AppIcon.icns` + `Resources/AppIcon.icon`) from `scripts/make-icon.swift` |
 | `scripts/cputime.sh <pid>` | Total CPU seconds a process has used |
 
@@ -116,17 +132,41 @@ Run the performance tests in release mode. Debug builds are several times slower
 - `BAM_NO_GLASS=1` uses plain materials instead of Liquid Glass, for A/B profiling.
 - `BAM_SNAPSHOT_DIR=<dir>` renders every screen to `<dir>/<section>-<w>x<h>.png`, writes `layout-report.txt` and
   quits. `BAM_SNAPSHOT_SIZES=900x560,1280x820` and `BAM_SNAPSHOT_SECTIONS=overview,cpu` narrow the run.
+- `BAM_MENUBAR_SNAPSHOT_DIR=<dir>` renders the menu bar item (see `check-menubar.sh`) and quits.
 
-## Releasing
+## Versioning and releases
 
-1. Move the `Unreleased` entries in [docs/CHANGELOG.md](CHANGELOG.md) under a new version heading.
-2. Bump `CFBundleShortVersionString` in `Resources/Info.plist`.
-3. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
+The project uses [Semantic Versioning](https://semver.org/). `main` is the nightly channel, and releases are
+cut from it now and then.
 
-The tag runs [`release.yml`](../.github/workflows/release.yml). It tests, packages and publishes a GitHub Release
-with the DMG, zip and checksums. The notes come from that version's `docs/CHANGELOG.md` section, followed by
-auto-generated notes. A tag with a suffix, like `v0.2.0-beta.1`, becomes a pre-release.
-`VERSION=0.2.0 scripts/package.sh` builds the same artifacts locally.
+- **The version** lives in one place: `MARKETING_VERSION` in the Xcode project. Both `Info.plist` files and
+  `bundle.sh` take it from there. On `main` it is the version being worked on, the next release.
+  `scripts/version.sh` prints it.
+- **Build numbers** (`CFBundleVersion`) are the number of commits on the built commit, so they only go up.
+- **Nightlies:** [`release.yml`](../.github/workflows/release.yml) builds `main` every night it has new commits
+  (or when you press *Run workflow*). It publishes the build as the rolling `nightly` pre-release, versioned
+  `<next>-nightly.<date>`, e.g. `0.2.0-nightly.20261031`, with the changelog's `Unreleased` section as its notes.
+- **Changelog:** every user-visible change adds a line under `Unreleased` in [CHANGELOG.md](CHANGELOG.md).
+
+To promote `main` to a release:
+
+```sh
+scripts/release.sh            # releases the version main is on, e.g. 0.2.0
+git log --oneline -3          # "Start 0.3.0", "Release 0.2.0" (tagged v0.2.0)
+git push origin main v0.2.0   # or run scripts/release.sh --push
+```
+
+`release.sh` checks that you're on an up-to-date, clean `main`. It moves the `Unreleased` entries under
+`## [0.2.0] - <date>`, commits *Release 0.2.0*, tags `v0.2.0`, and moves `main` on to `0.3.0`. Pushing the tag
+runs `release.yml`. That workflow tests, packages the Xcode build with widgets, and publishes a GitHub Release
+with the DMG, zip and checksums. The notes come from that version's changelog section, followed by
+auto-generated notes. The workflow refuses a tag that doesn't match `MARKETING_VERSION`.
+
+- **Patch release:** run `scripts/version.sh set 0.2.1`, commit, then `scripts/release.sh`.
+- **Major version:** `scripts/version.sh set 1.0.0` first.
+- **Pre-release:** `scripts/release.sh 0.3.0-beta.1` only tags. The changelog and version stay, and GitHub marks
+  it as a pre-release.
+- **Local artifacts:** `scripts/package.sh` builds the same files locally.
 
 Builds are ad-hoc signed by default. To ship signed and notarized builds, add these repository secrets:
 

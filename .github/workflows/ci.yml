@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the build number counts commits
 
       - name: Select latest Xcode
         run: |
@@ -38,11 +40,15 @@ jobs:
       - name: Unit tests
         run: swift test -c release --skip SamplerPerformanceTests --skip AppPerformanceTests
 
+      # The SwiftPM bundle (used by the local profiling scripts) and the Xcode build with the desktop widgets.
       - name: Bundle app
         run: scripts/bundle.sh
+
+      - name: Build app with widgets
+        run: VERSION="$(scripts/version.sh nightly)" scripts/build-app.sh Release
 
       - uses: actions/upload-artifact@v4
         with:
           name: BetterActivityMonitor-${{ github.sha }}
-          path: build/BetterActivityMonitor.app
+          path: build/xcode/Release/BetterActivityMonitor.app
           retention-days: 7
