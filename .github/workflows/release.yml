@@ -65,8 +65,8 @@ jobs:
         run: |
           VERSION="${TAG#v}"
           NOTES="$RUNNER_TEMP/notes.md"
-          # The CHANGELOG section for this version, if there is one.
-          awk -v v="$VERSION" '$0 ~ "^## \\[?"v"\\]?" {on=1; next} /^## / && on {exit} on' CHANGELOG.md > "$NOTES"
+          # The docs/CHANGELOG.md section for this version, if there is one.
+          awk -v v="$VERSION" '$0 ~ "^## \\[?"v"\\]?" {on=1; next} /^## / && on {exit} on' docs/CHANGELOG.md > "$NOTES"
           if [[ "$NOTARIZED" != "true" ]]; then
             cat >> "$NOTES" <<'EOF'
 

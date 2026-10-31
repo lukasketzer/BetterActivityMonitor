@@ -18,7 +18,7 @@ process table with a tree view, signals, renice and an inspector. Built with Swi
 [**Download**](https://github.com/lukasketzer/BetterActivityMonitor/releases/latest) ·
 [Features](#features) ·
 [Build from source](#build-from-source) ·
-[Contributing](CONTRIBUTING.md)
+[Contributing](docs/CONTRIBUTING.md)
 
 <br>
 
@@ -55,7 +55,7 @@ process table with a tree view, signals, renice and an inspector. Built with Swi
 - **Menu bar**: optional CPU, memory and network readouts in the menu bar.
 - **Looks**: Liquid Glass on macOS 26, plus themes (System, btop, Nord, Dracula, …), graph styles (area, line,
   bars) and °C/°F.
-- **Light on resources**: sampling is budgeted and benchmarked (see [CONTRIBUTING.md](CONTRIBUTING.md)), so leaving
+- **Light on resources**: sampling is budgeted and benchmarked (see [CONTRIBUTING.md](docs/CONTRIBUTING.md)), so leaving
   the app open costs little.
 
 ## Install
@@ -84,7 +84,7 @@ scripts/bundle.sh                     # release build → build/BetterActivityMo
 open build/BetterActivityMonitor.app
 ```
 
-More on the build, tests and tooling in [CONTRIBUTING.md](CONTRIBUTING.md).
+More on the build, tests and tooling in [CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ## Permissions and limitations
 
@@ -105,7 +105,7 @@ Ideas and requests: [open an issue](https://github.com/lukasketzer/BetterActivit
 
 ## Contributing
 
-Bug reports, ideas and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the project layout,
+Bug reports, ideas and pull requests are welcome. [CONTRIBUTING.md](docs/CONTRIBUTING.md) covers the project layout,
 the tests and benchmarks to run before a pull request, the developer tooling and how releases are cut.
 
 ## License

@@ -34,7 +34,7 @@ jobs:
         run: swift build -c release
 
       # Timing budgets (SamplerPerformanceTests) and app-launch tests (AppPerformanceTests) are too noisy on
-      # shared VMs; run them locally (see README).
+      # shared VMs; run them locally (see docs/CONTRIBUTING.md).
       - name: Unit tests
         run: swift test -c release --skip SamplerPerformanceTests --skip AppPerformanceTests
 

@@ -23,7 +23,7 @@ report problems, set up the project, find your way around the code, and check a 
 - for a crash, the report from *Console.app → Crash Reports*.
 
 For a feature request, describe the problem it solves and how you picture it working. Check the
-[roadmap](README.md#roadmap) and the open issues first, in case it's already planned.
+[roadmap](../README.md#roadmap) and the open issues first, in case it's already planned.
 
 ## Setting up
 
@@ -119,12 +119,12 @@ Run the performance tests in release mode. Debug builds are several times slower
 
 ## Releasing
 
-1. Move the `Unreleased` entries in `CHANGELOG.md` under a new version heading.
+1. Move the `Unreleased` entries in [docs/CHANGELOG.md](CHANGELOG.md) under a new version heading.
 2. Bump `CFBundleShortVersionString` in `Resources/Info.plist`.
 3. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
 
-The tag runs [`release.yml`](.github/workflows/release.yml). It tests, packages and publishes a GitHub Release
-with the DMG, zip and checksums. The notes come from that version's `CHANGELOG.md` section, followed by
+The tag runs [`release.yml`](../.github/workflows/release.yml). It tests, packages and publishes a GitHub Release
+with the DMG, zip and checksums. The notes come from that version's `docs/CHANGELOG.md` section, followed by
 auto-generated notes. A tag with a suffix, like `v0.2.0-beta.1`, becomes a pre-release.
 `VERSION=0.2.0 scripts/package.sh` builds the same artifacts locally.
 
