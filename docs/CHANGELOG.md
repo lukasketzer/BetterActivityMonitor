@@ -20,6 +20,7 @@ tagged version into the GitHub Release notes; nightly builds show the `Unrelease
 
 - The menu bar item no longer changes width as its numbers change, and stays monochrome unless you turn on theme
   colors. Your earlier CPU, memory and network choices carry over.
+- A new app icon: a graphite chip whose screen shows the CPU Load graph, in Activity Monitor's red and blue.
 
 ## [0.1.0]
 
