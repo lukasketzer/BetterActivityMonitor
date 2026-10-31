@@ -68,9 +68,11 @@ final class TemperatureSampler {
         }
         keys = found.map(\.0).sorted { $0.name < $1.name }
         // Routine set: the hottest keys of each CPU/GPU family track load best.
-        routine = [SensorCategory.cpu, .gpu, .battery, .storage].flatMap { category in
-            found.filter { $0.0.category == category }.sorted { $0.1 > $1.1 }
-                .prefix(category == .cpu || category == .gpu ? Self.routineKeysPerCategory : 1).map(\.0)
+        // Typed steps: as one chained expression this times out the type checker in Swift 6.3.
+        routine = [SensorCategory.cpu, .gpu, .battery, .storage].flatMap { (category: SensorCategory) -> [Key] in
+            let hottest: [(Key, Double)] = found.filter { $0.0.category == category }.sorted { $0.1 > $1.1 }
+            let count: Int = category == .cpu || category == .gpu ? Self.routineKeysPerCategory : 1
+            return hottest.prefix(count).map { $0.0 }
         }
 
         let fanCount = SMC.code("FNum")
