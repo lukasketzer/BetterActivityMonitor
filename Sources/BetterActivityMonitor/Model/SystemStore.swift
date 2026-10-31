@@ -217,6 +217,9 @@ final class SystemStore {
             }
             push(&diskRead, s.disks.readRate)
             push(&diskWrite, s.disks.writeRate)
+            #if WIDGETS
+            WidgetFeed.record(s, cpuHistory: cpuTotal, gpuHistory: gpu)
+            #endif
         }
 
         let m = s.memory

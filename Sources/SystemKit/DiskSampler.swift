@@ -59,7 +59,7 @@ final class DiskSampler {
         )
     }
 
-    private static func readVolumes() -> [Volume] {
+    static func readVolumes() -> [Volume] {
         let keys: [URLResourceKey] = [.volumeNameKey, .volumeTotalCapacityKey, .volumeAvailableCapacityKey,
                                       .volumeAvailableCapacityForImportantUsageKey, .volumeIsInternalKey,
                                       .volumeIsRemovableKey, .volumeLocalizedFormatDescriptionKey]

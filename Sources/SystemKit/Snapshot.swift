@@ -172,6 +172,12 @@ public struct BatteryStats: Sendable {
     public var amperage: Double?           // A, negative when discharging
     public var watts: Double? { voltage.flatMap { v in amperage.map { v * $0 } } }
     public var adapterWatts: Int?
+    public var adapterVoltage: Double?     // V the charger negotiated
+    public var adapterCurrent: Double?     // A the charger can supply
+    /// W coming in from the charger right now.
+    public var systemPowerIn: Double?
+    /// W the whole Mac is using right now.
+    public var systemLoad: Double?
     public var condition: String?
 }
 

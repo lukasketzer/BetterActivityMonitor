@@ -1,0 +1,405 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B0A000000000000000000101 /* SystemKit in Frameworks */ = {isa = PBXBuildFile; productRef = B0A000000000000000000601 /* SystemKit */; };
+		B0A000000000000000000102 /* SystemKit in Frameworks */ = {isa = PBXBuildFile; productRef = B0A000000000000000000602 /* SystemKit */; };
+		B0A000000000000000000103 /* BAMWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B0A000000000000000000202 /* BAMWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B0A000000000000000000104 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = B0A000000000000000000211 /* AppIcon.icon */; };
+		B0A000000000000000000105 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = B0A000000000000000000212 /* AppIcon.icns */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B0A000000000000000000701 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B0A000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B0A000000000000000000402;
+			remoteInfo = BAMWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B0A000000000000000000505 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B0A000000000000000000103 /* BAMWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		B0A000000000000000000201 /* BetterActivityMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BetterActivityMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B0A000000000000000000202 /* BAMWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BAMWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B0A000000000000000000211 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		B0A000000000000000000212 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		B0A000000000000000000213 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B0A000000000000000000214 /* BAMWidgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "BAMWidgets-Info.plist"; sourceTree = "<group>"; };
+		B0A000000000000000000215 /* BAMWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BAMWidgets.entitlements; sourceTree = "<group>"; };
+		B0A000000000000000000216 /* BetterActivityMonitor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BetterActivityMonitor.entitlements; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		B0A000000000000000000301 /* BetterActivityMonitor */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Sources/BetterActivityMonitor; sourceTree = "<group>"; };
+		B0A000000000000000000302 /* BAMWidgets */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Sources/BAMWidgets; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B0A000000000000000000502 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B0A000000000000000000101 /* SystemKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0A000000000000000000512 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B0A000000000000000000102 /* SystemKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		B0A000000000000000000010 = {
+			isa = PBXGroup;
+			children = (
+				B0A000000000000000000301 /* BetterActivityMonitor */,
+				B0A000000000000000000302 /* BAMWidgets */,
+				B0A000000000000000000012 /* Resources */,
+				B0A000000000000000000011 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B0A000000000000000000011 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B0A000000000000000000201 /* BetterActivityMonitor.app */,
+				B0A000000000000000000202 /* BAMWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B0A000000000000000000012 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B0A000000000000000000211 /* AppIcon.icon */,
+				B0A000000000000000000212 /* AppIcon.icns */,
+				B0A000000000000000000213 /* Info.plist */,
+				B0A000000000000000000214 /* BAMWidgets-Info.plist */,
+				B0A000000000000000000215 /* BAMWidgets.entitlements */,
+				B0A000000000000000000216 /* BetterActivityMonitor.entitlements */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B0A000000000000000000401 /* BetterActivityMonitor */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B0A000000000000000000821 /* Build configuration list for PBXNativeTarget "BetterActivityMonitor" */;
+			buildPhases = (
+				B0A000000000000000000501 /* Sources */,
+				B0A000000000000000000502 /* Frameworks */,
+				B0A000000000000000000503 /* Resources */,
+				B0A000000000000000000505 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B0A000000000000000000702 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B0A000000000000000000301 /* BetterActivityMonitor */,
+			);
+			name = BetterActivityMonitor;
+			packageProductDependencies = (
+				B0A000000000000000000601 /* SystemKit */,
+			);
+			productName = BetterActivityMonitor;
+			productReference = B0A000000000000000000201 /* BetterActivityMonitor.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B0A000000000000000000402 /* BAMWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B0A000000000000000000831 /* Build configuration list for PBXNativeTarget "BAMWidgets" */;
+			buildPhases = (
+				B0A000000000000000000511 /* Sources */,
+				B0A000000000000000000512 /* Frameworks */,
+				B0A000000000000000000513 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B0A000000000000000000302 /* BAMWidgets */,
+			);
+			name = BAMWidgets;
+			packageProductDependencies = (
+				B0A000000000000000000602 /* SystemKit */,
+			);
+			productName = BAMWidgets;
+			productReference = B0A000000000000000000202 /* BAMWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		B0A000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					B0A000000000000000000401 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					B0A000000000000000000402 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+				};
+			};
+			buildConfigurationList = B0A000000000000000000801 /* Build configuration list for PBXProject "BetterActivityMonitor" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = B0A000000000000000000010;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B0A000000000000000000901 /* XCLocalSwiftPackageReference "." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B0A000000000000000000011 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B0A000000000000000000401 /* BetterActivityMonitor */,
+				B0A000000000000000000402 /* BAMWidgets */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B0A000000000000000000503 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B0A000000000000000000104 /* AppIcon.icon in Resources */,
+				B0A000000000000000000105 /* AppIcon.icns in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0A000000000000000000513 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B0A000000000000000000501 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0A000000000000000000511 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B0A000000000000000000702 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B0A000000000000000000402 /* BAMWidgets */;
+			targetProxy = B0A000000000000000000701 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		B0A000000000000000000802 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 7HGU5XLVZH;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B0A000000000000000000803 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 7HGU5XLVZH;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		B0A000000000000000000822 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				CODE_SIGN_ENTITLEMENTS = Resources/BetterActivityMonitor.entitlements;
+				INFOPLIST_FILE = Resources/Info.plist;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "WIDGETS $(inherited)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lukas.BetterActivityMonitor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		B0A000000000000000000823 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				CODE_SIGN_ENTITLEMENTS = Resources/BetterActivityMonitor.entitlements;
+				INFOPLIST_FILE = Resources/Info.plist;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "WIDGETS $(inherited)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lukas.BetterActivityMonitor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		B0A000000000000000000832 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Resources/BAMWidgets.entitlements;
+				INFOPLIST_FILE = "Resources/BAMWidgets-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lukas.BetterActivityMonitor.Widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		B0A000000000000000000833 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Resources/BAMWidgets.entitlements;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = "Resources/BAMWidgets-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lukas.BetterActivityMonitor.Widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B0A000000000000000000801 /* Build configuration list for PBXProject "BetterActivityMonitor" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B0A000000000000000000802 /* Debug */,
+				B0A000000000000000000803 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B0A000000000000000000821 /* Build configuration list for PBXNativeTarget "BetterActivityMonitor" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B0A000000000000000000822 /* Debug */,
+				B0A000000000000000000823 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B0A000000000000000000831 /* Build configuration list for PBXNativeTarget "BAMWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B0A000000000000000000832 /* Debug */,
+				B0A000000000000000000833 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		B0A000000000000000000901 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B0A000000000000000000601 /* SystemKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B0A000000000000000000901 /* XCLocalSwiftPackageReference "." */;
+			productName = SystemKit;
+		};
+		B0A000000000000000000602 /* SystemKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B0A000000000000000000901 /* XCLocalSwiftPackageReference "." */;
+			productName = SystemKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = B0A000000000000000000001 /* Project object */;
+}

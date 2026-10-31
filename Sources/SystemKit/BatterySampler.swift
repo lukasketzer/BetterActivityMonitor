@@ -51,7 +51,15 @@ final class BatterySampler {
             if let a = props["InstantAmperage"] as? NSNumber ?? props["Amperage"] as? NSNumber {
                 stats.amperage = Double(a.int64Value) / 1000
             }
-            if let adapter = props["AdapterDetails"] as? [String: Any] { stats.adapterWatts = adapter.int("Watts") }
+            if let adapter = props["AdapterDetails"] as? [String: Any] {
+                stats.adapterWatts = adapter.int("Watts")
+                stats.adapterVoltage = adapter.number("AdapterVoltage").map { $0 / 1000 }
+                stats.adapterCurrent = adapter.number("Current").map { $0 / 1000 }
+            }
+            if let power = props["PowerTelemetryData"] as? [String: Any] {
+                stats.systemPowerIn = power.number("SystemPowerIn").map { $0 / 1000 }
+                stats.systemLoad = power.number("SystemLoad").map { $0 / 1000 }
+            }
         }
         return stats
     }
@@ -62,6 +70,7 @@ extension BatteryStats {
         self.init(charge: charge, isCharging: isCharging, isPluggedIn: isPluggedIn, isCharged: isCharged,
                   minutesRemaining: minutesRemaining, cycleCount: nil, health: nil, designCapacity: nil,
                   maxCapacity: nil, temperature: nil, voltage: nil, amperage: nil, adapterWatts: nil,
+                  adapterVoltage: nil, adapterCurrent: nil, systemPowerIn: nil, systemLoad: nil,
                   condition: condition)
     }
 }
