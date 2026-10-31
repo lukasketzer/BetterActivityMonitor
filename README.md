@@ -31,8 +31,7 @@ process table with a tree view, signals, renice and an inspector. Built with Swi
 | | |
 |:---:|:---:|
 | <img src="docs/screenshots/processes.png" alt="Processes"><br>**Processes** | <img src="docs/screenshots/cpu.png" alt="CPU"><br>**CPU** |
-| <img src="docs/screenshots/memory.png" alt="Memory"><br>**Memory** | <img src="docs/screenshots/network.png" alt="Network"><br>**Network** |
-| <img src="docs/screenshots/disks.png" alt="Disks"><br>**Disks** | <img src="docs/screenshots/sensors.png" alt="GPU & Sensors"><br>**GPU & Sensors** |
+| <img src="docs/screenshots/memory.png" alt="Memory"><br>**Memory** | <img src="docs/screenshots/network.png" alt="Network connections"><br>**Network connections** |
 
 ## Features
 
