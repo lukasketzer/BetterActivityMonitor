@@ -48,7 +48,11 @@ plus a fast process list that lets you find, inspect and stop any app.
 - **Disks**: free space on each drive, and how fast data is being read and written.
 - **Temperatures and fans**: CPU, GPU, battery and SSD temperatures, plus fan speeds.
 - **Battery**: charge, health, charge cycles, power use and time remaining.
-- **Menu bar**: optionally keep CPU, memory and network readouts in the menu bar.
+- **Desktop widgets**: put live CPU, GPU, memory, disk, battery and uptime widgets on your desktop or in
+  Notification Center: rings, bars, or graphs of the last day. Edit a widget to choose its metrics; click it to
+  jump to that screen.
+- **Menu bar**: a compact menu bar item that looks like the system's own. Show the metrics you pick as rings,
+  percentages or absolute values (like memory in use or battery time left), in the order you like.
 - **Make it yours**: the glassy macOS 26 look, color themes (including btop, Nord and Dracula), several graph
   styles, and °C or °F.
 - **Light on your Mac**: built to stay cheap to leave open all day.
@@ -68,6 +72,13 @@ plus a fast process list that lets you find, inspect and stop any app.
 Requires macOS 14 Sonoma or later on Apple Silicon. Liquid Glass needs macOS 26; older systems get standard
 materials. Each release lists its `SHA256SUMS`.
 
+### Nightly builds
+
+`main` is built every night it has new changes and published as the
+[nightly release](https://github.com/lukasketzer/BetterActivityMonitor/releases/tag/nightly), versioned like
+`0.2.0-nightly.20261031`. Nightlies have the newest features before they are released, and may be rough. What's new
+since the last release is in the [changelog](docs/CHANGELOG.md) under *Unreleased*.
+
 ## Build from source
 
 You need Xcode 26 or later (for the macOS 26 SDK).
@@ -75,9 +86,12 @@ You need Xcode 26 or later (for the macOS 26 SDK).
 ```sh
 git clone https://github.com/lukasketzer/BetterActivityMonitor.git
 cd BetterActivityMonitor
-scripts/bundle.sh                     # release build → build/BetterActivityMonitor.app (ad-hoc signed)
-open build/BetterActivityMonitor.app
+scripts/build-app.sh                  # release build with widgets → build/xcode/Release/BetterActivityMonitor.app
+open build/xcode/Release/BetterActivityMonitor.app
 ```
+
+You can also open `BetterActivityMonitor.xcodeproj` in Xcode. `scripts/bundle.sh` makes a quicker SwiftPM build
+without the widgets.
 
 More on the build, tests and tooling in [CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
@@ -92,7 +106,8 @@ More on the build, tests and tooling in [CONTRIBUTING.md](docs/CONTRIBUTING.md).
 ## Roadmap
 
 - [x] Network connections, listening sockets and connection log
-- [ ] Desktop and Notification Center widgets
+- [x] Desktop and Notification Center widgets
+- [x] Customizable menu bar item
 - [ ] More settings
 - [ ] Notarized builds
 
