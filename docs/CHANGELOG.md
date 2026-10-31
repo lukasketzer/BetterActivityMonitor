@@ -12,12 +12,12 @@ First public release.
 
 ### Added
 
-- Overview dashboard with CPU, GPU, memory, network, disk and sensor cards above a live process list.
-- Process table (NSTableView) with sorting, search (plain or regex), scopes, tree view with collapsible subtrees,
-  signals, renice (asking for admin rights when needed) and an inspector.
-- CPU screen with per-core P/E graphs, load averages and CPU temperature.
-- Memory screen with app / wired / compressed / cached breakdown, pressure and swap.
-- Network screen with per-interface throughput, plus Connections, Listening and Log pages built on `nettop`.
-- Disks, GPU & sensors (SMC temperatures and fans) and battery screens.
-- Menu bar extra with CPU, memory and network readouts.
-- Themes (System, btop, Nord, Dracula, …), graph styles and Liquid Glass on macOS 26.
+- Overview with CPU, GPU, memory, network, disk and temperature cards above a live list of what's running.
+- Process list: sort, search, show just your apps, a tree view, and quit, pause or reprioritize any process.
+- CPU screen with a graph for every core and the CPU temperature.
+- Memory screen showing what uses your memory and whether your Mac is running low.
+- Network screen with download and upload speeds, the connections each app has open, apps waiting for
+  connections, and a connection log.
+- Disks, temperatures and fans, and battery screens.
+- Optional CPU, memory and network readouts in the menu bar.
+- The glassy macOS 26 look, color themes and several graph styles.

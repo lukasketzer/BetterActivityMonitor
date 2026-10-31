@@ -6,8 +6,8 @@
 
 **A native macOS system monitor with btop's depth and Activity Monitor's polish.**
 
-CPU per core (P/E), GPU, memory, network connections, disks, temperatures, fans and battery, plus a fast
-process table with a tree view, signals, renice and an inspector. Built with SwiftUI, AppKit and Liquid Glass.
+See what your Mac is doing at a glance: CPU, GPU, memory, network, disks, temperatures, fans and battery,
+plus a fast process list that lets you find, inspect and stop any app.
 
 [![CI](https://github.com/lukasketzer/BetterActivityMonitor/actions/workflows/ci.yml/badge.svg)](https://github.com/lukasketzer/BetterActivityMonitor/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/lukasketzer/BetterActivityMonitor?sort=semver)](https://github.com/lukasketzer/BetterActivityMonitor/releases/latest)
@@ -31,31 +31,27 @@ process table with a tree view, signals, renice and an inspector. Built with Swi
 | | |
 |:---:|:---:|
 | <img src="docs/screenshots/processes.png" alt="Processes"><br>**Processes** | <img src="docs/screenshots/cpu.png" alt="CPU"><br>**CPU** |
-| <img src="docs/screenshots/memory.png" alt="Memory"><br>**Memory** | <img src="docs/screenshots/network.png" alt="Network connections"><br>**Network connections** |
+| <img src="docs/screenshots/memory.png" alt="Memory"><br>**Memory** | <img src="docs/screenshots/network.png" alt="Network: apps listening for connections"><br>**Network: listening apps** |
 
 ## Features
 
-- **Overview**: one dashboard with CPU, GPU, memory, network, disk and sensor cards above a live process list.
-  You choose which cards show.
-- **Processes**: a native `NSTableView` that stays smooth with 1000+ processes.
-  - Sort by any column. Filter as you type, with plain text or regular expressions.
-  - Scopes: all, mine, apps, system, active.
-  - Tree view with collapsible subtrees; a collapsed parent shows its subtree's CPU and memory, like btop.
-  - Send any signal, renice, and open an inspector per process. Asks for admin rights only when the target belongs to another user.
-- **CPU**: total, user and system load, with a graph per core labelled performance or efficiency, plus load
-  averages, top CPU consumers and CPU temperature.
-- **Memory**: app, wired, compressed and cached memory, memory pressure and swap.
-- **Network**: throughput per interface. The **Connections**, **Listening** and **Log** pages show every
-  TCP/UDP/QUIC flow per process, with service names, address scope, RTT and retransmits. Filter them with tokens like
-  `proc:safari port:443 scope:internet`.
-- **Disks**: per-volume usage and read/write throughput.
-- **GPU & Sensors**: GPU renderer, tiler and memory use; SMC temperatures and fan speeds.
-- **Battery**: charge, health, cycle count, power draw and time remaining.
-- **Menu bar**: optional CPU, memory and network readouts in the menu bar.
-- **Looks**: Liquid Glass on macOS 26, plus themes (System, btop, Nord, Dracula, …), graph styles (area, line,
-  bars) and °C/°F.
-- **Light on resources**: sampling is budgeted and benchmarked (see [CONTRIBUTING.md](docs/CONTRIBUTING.md)), so leaving
-  the app open costs little.
+- **Everything on one screen**: the Overview puts CPU, GPU, memory, network, disks and temperatures above a live
+  list of what's running. Pick the cards you want to see.
+- **Find and control any process**: sort by what's using the most, search as you type, or show just your apps.
+  See which process started which in a tree view. Quit, force quit or pause a process, change its priority,
+  or open it for a closer look.
+- **CPU in detail**: overall load, a graph for every core, and the CPU temperature, so you see what's slowing
+  your Mac down.
+- **Memory at a glance**: how much is in use, by what, and whether your Mac is running out.
+- **See who's online**: live download and upload speeds, which apps are connected to where, which apps are
+  waiting for connections, and a log of connections as they come and go.
+- **Disks**: free space on each drive, and how fast data is being read and written.
+- **Temperatures and fans**: CPU, GPU, battery and SSD temperatures, plus fan speeds.
+- **Battery**: charge, health, charge cycles, power use and time remaining.
+- **Menu bar**: optionally keep CPU, memory and network readouts in the menu bar.
+- **Make it yours**: the glassy macOS 26 look, color themes (including btop, Nord and Dracula), several graph
+  styles, and °C or °F.
+- **Light on your Mac**: built to stay cheap to leave open all day.
 
 ## Install
 
