@@ -12,9 +12,10 @@ enum SettingsKey {
     static let useRegex = "useRegex"
     static let confirmKill = "confirmKill"
     static let showMenuBarExtra = "showMenuBarExtra"
-    static let menuBarShowsCPU = "menuBarShowsCPU"
-    static let menuBarShowsMemory = "menuBarShowsMemory"
-    static let menuBarShowsNetwork = "menuBarShowsNetwork"
+    static let menuBarItems = "menuBar.items"
+    static let menuBarStyle = "menuBar.style"
+    static let menuBarColored = "menuBar.colored"
+    static let menuBarSymbols = "menuBar.symbols"
     static let overviewCPU = "overview.cpu"
     static let overviewMemory = "overview.memory"
     static let overviewNetwork = "overview.network"
@@ -43,6 +44,7 @@ enum GraphStyle: String, CaseIterable, Identifiable {
 
 enum Defaults {
     static func register() {
+        migrateMenuBarToggles()
         UserDefaults.standard.register(defaults: [
             SettingsKey.refreshInterval: 1.0,
             SettingsKey.historyLength: 120,
@@ -54,9 +56,10 @@ enum Defaults {
             SettingsKey.useRegex: false,
             SettingsKey.confirmKill: true,
             SettingsKey.showMenuBarExtra: false,
-            SettingsKey.menuBarShowsCPU: true,
-            SettingsKey.menuBarShowsMemory: true,
-            SettingsKey.menuBarShowsNetwork: false,
+            SettingsKey.menuBarItems: MenuBarItems.default.rawValue,
+            SettingsKey.menuBarStyle: MenuBarStyle.rings.rawValue,
+            SettingsKey.menuBarColored: false,
+            SettingsKey.menuBarSymbols: true,
             SettingsKey.overviewCPU: true,
             SettingsKey.overviewMemory: true,
             SettingsKey.overviewNetwork: true,
@@ -70,6 +73,19 @@ enum Defaults {
             SettingsKey.networkPage: NetworkPage.overview.rawValue,
             SettingsKey.networkShowLoopback: false,
         ])
+    }
+
+    /// Earlier versions stored three menu bar toggles; carry them over into the ordered list once.
+    static func migrateMenuBarToggles(_ defaults: UserDefaults = .standard) {
+        let old = ["menuBarShowsCPU", "menuBarShowsMemory", "menuBarShowsNetwork"]
+        guard old.contains(where: { defaults.object(forKey: $0) != nil }) else { return }
+        if defaults.object(forKey: SettingsKey.menuBarItems) == nil {
+            let items = MenuBarItems.migrated(cpu: defaults.object(forKey: old[0]) as? Bool ?? true,
+                                              memory: defaults.object(forKey: old[1]) as? Bool ?? true,
+                                              network: defaults.object(forKey: old[2]) as? Bool ?? false)
+            defaults.set(items.rawValue, forKey: SettingsKey.menuBarItems)
+        }
+        old.forEach(defaults.removeObject(forKey:))
     }
 
     static var refreshInterval: Double {

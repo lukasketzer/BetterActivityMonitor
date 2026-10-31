@@ -11,12 +11,17 @@ struct BetterActivityMonitorApp: App {
             ContentView()
                 .environment(store)
                 .frame(minWidth: 900, minHeight: 560)
+                // Widgets link to betteractivitymonitor://<section>.
+                .onOpenURL { url in
+                    if let section = url.host().flatMap(AppSection.init(rawValue:)) { store.section = section }
+                }
         }
+        .handlesExternalEvents(matching: ["*"])
         .defaultSize(width: 1280, height: 820)
         .commands { AppCommands(store: store) }
 
         Settings {
-            SettingsView()
+            SettingsView().environment(store)
         }
 
         MenuBarExtra(isInserted: $showMenuBarExtra) {
@@ -40,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.applicationIconImage = NSImage(contentsOf: icon)
         NSApp.activate()
         DebugSnapshot.runIfRequested()
+        MenuBarSnapshot.runIfRequested()
         ResizeBench.runIfRequested()
     }
 

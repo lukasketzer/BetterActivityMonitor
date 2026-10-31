@@ -110,21 +110,99 @@ private struct ProcessSettings: View {
 }
 
 private struct MenuBarSettings: View {
+    @Environment(SystemStore.self) private var store
     @AppStorage(SettingsKey.showMenuBarExtra) private var show = false
-    @AppStorage(SettingsKey.menuBarShowsCPU) private var cpu = true
-    @AppStorage(SettingsKey.menuBarShowsMemory) private var memory = true
-    @AppStorage(SettingsKey.menuBarShowsNetwork) private var network = false
+    @AppStorage(SettingsKey.menuBarItems) private var items = MenuBarItems.default
+    @AppStorage(SettingsKey.menuBarStyle) private var style: MenuBarStyle = .rings
+    @AppStorage(SettingsKey.menuBarColored) private var colored = false
+    @AppStorage(SettingsKey.menuBarSymbols) private var symbols = true
+    @AppStorage(SettingsKey.theme) private var themeID = Theme.system.id
+    @AppStorage(SettingsKey.fahrenheit) private var fahrenheit = false
 
     var body: some View {
         Form {
             Toggle("Show in menu bar", isOn: $show)
-            Section("Menu bar shows") {
-                Toggle("CPU usage", isOn: $cpu)
-                Toggle("Memory usage", isOn: $memory)
-                Toggle("Network throughput", isOn: $network)
+            Section {
+                MenuBarPreview(glyph: MenuBarGlyph(readings: store.menuBarReadings(items.enabled, fahrenheit: fahrenheit),
+                                                   style: style, colored: colored, symbols: symbols, theme: Theme.named(themeID)))
+                Picker("Style", selection: $style) {
+                    ForEach(MenuBarStyle.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                if style == .absolute {
+                    Text("CPU shows the 1-minute load average; memory, GPU memory and disk show the amount in use; battery shows the time remaining. Percentages stand in where there is no absolute value.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Toggle(style == .rings ? "Show labels beside rings" : "Show symbols before values", isOn: $symbols)
+                Toggle("Use theme colors", isOn: $colored)
+                Text("Monochrome matches the system menu bar and follows its light, dark and tinted appearance.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            .disabled(!show)
+            Section {
+                List {
+                    ForEach($items.entries) { $entry in
+                        MenuBarMetricRow(entry: $entry, available: isAvailable(entry.metric))
+                    }
+                    .onMove { items.entries.move(fromOffsets: $0, toOffset: $1) }
+                }
+                .scrollDisabled(true)
+                .frame(height: CGFloat(items.entries.count) * 26 + 8)
+            } header: {
+                Text("Metrics")
+            } footer: {
+                Text("Drag to reorder. Network shows download over upload and has no ring.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
+        .disabled(!show)
+    }
+
+    private func isAvailable(_ metric: MenuBarMetric) -> Bool {
+        guard let snapshot = store.snapshot else { return true }
+        return MenuBarInputs(snapshot, temperature: store.cpuTemperatureNow).reading(metric, fahrenheit: fahrenheit) != nil
+    }
+}
+
+private struct MenuBarMetricRow: View {
+    @Binding var entry: MenuBarEntry
+    var available: Bool
+
+    var body: some View {
+        HStack {
+            Toggle(isOn: $entry.enabled) {
+                Label(entry.metric.title, systemImage: entry.metric.symbol)
+            }
+            .toggleStyle(.checkbox)
+            Spacer()
+            if !available {
+                Text("Not available on this Mac").font(.caption).foregroundStyle(.tertiary)
+            }
+            Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary)
+        }
+    }
+}
+
+/// The glyph between stand-ins for the clock and system icons, on a strip that looks like the menu bar.
+private struct MenuBarPreview: View {
+    var glyph: MenuBarGlyph
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Spacer()
+            if glyph.readings.isEmpty {
+                Image(systemName: "gauge.with.dots.needle.33percent")
+            } else {
+                glyph
+            }
+            Image(systemName: "wifi")
+            Image(systemName: "battery.75percent")
+            Text(Date.now, format: .dateTime.weekday().hour().minute())
+        }
+        .font(.system(size: MenuBarGlyph.fontSize))
+        .padding(.horizontal, 12)
+        .frame(height: 26)
+        .background(.bar, in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
     }
 }

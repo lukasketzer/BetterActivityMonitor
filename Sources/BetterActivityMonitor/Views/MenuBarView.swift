@@ -2,25 +2,32 @@ import SwiftUI
 
 struct MenuBarLabel: View {
     var store: SystemStore
-    @AppStorage(SettingsKey.menuBarShowsCPU) private var cpu = true
-    @AppStorage(SettingsKey.menuBarShowsMemory) private var memory = true
-    @AppStorage(SettingsKey.menuBarShowsNetwork) private var network = false
+    @AppStorage(SettingsKey.menuBarItems) private var items = MenuBarItems.default
+    @AppStorage(SettingsKey.menuBarStyle) private var style: MenuBarStyle = .rings
+    @AppStorage(SettingsKey.menuBarColored) private var colored = false
+    @AppStorage(SettingsKey.menuBarSymbols) private var symbols = true
+    @AppStorage(SettingsKey.theme) private var themeID = Theme.system.id
+    @AppStorage(SettingsKey.fahrenheit) private var fahrenheit = false
+    @Environment(\.displayScale) private var scale
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        if let s = store.snapshot {
-            let parts = [
-                cpu ? "CPU \(Fmt.percent(s.cpu.total, digits: 0))" : nil,
-                memory ? "MEM \(Fmt.percent(s.memory.usedFraction, digits: 0))" : nil,
-                network ? "↓\(Fmt.rate(s.network.rateIn))" : nil,
-            ].compactMap { $0 }
-            if parts.isEmpty {
-                Image(systemName: "gauge.with.dots.needle.33percent")
-            } else {
-                Text(parts.joined(separator: "  ")).monospacedDigit()
-            }
+        let glyph = MenuBarGlyph(readings: store.menuBarReadings(items.enabled, fahrenheit: fahrenheit),
+                                 style: style, colored: colored, symbols: symbols, theme: Theme.named(themeID))
+        if let image = MenuBarRenderer.image(glyph, scale: scale, colorScheme: colorScheme) {
+            Image(nsImage: image)
         } else {
             Image(systemName: "gauge.with.dots.needle.33percent")
         }
+    }
+}
+
+extension SystemStore {
+    /// The chosen metrics this Mac can provide, in the chosen order. Empty until the first sample.
+    func menuBarReadings(_ metrics: [MenuBarMetric], fahrenheit: Bool) -> [MenuBarReading] {
+        guard let snapshot else { return [] }
+        let inputs = MenuBarInputs(snapshot, temperature: cpuTemperatureNow)
+        return metrics.compactMap { inputs.reading($0, fahrenheit: fahrenheit) }
     }
 }
 
@@ -28,16 +35,32 @@ struct MenuBarView: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.openWindow) private var openWindow
     @AppStorage(SettingsKey.theme) private var themeID = Theme.system.id
+    @AppStorage(SettingsKey.menuBarItems) private var items = MenuBarItems.default
+
+    /// Graph rows follow the menu bar's metrics and order; the full set when none of them has a graph here.
+    private var graphed: [MenuBarMetric] {
+        let available: [MenuBarMetric] = [.cpu, .memory, .network, .gpu]
+        let chosen = items.enabled.filter(available.contains)
+        return chosen.isEmpty ? available : chosen
+    }
 
     var body: some View {
         let theme = Theme.named(themeID)
         VStack(alignment: .leading, spacing: 12) {
             if let s = store.snapshot {
-                row("CPU", Fmt.percent(s.cpu.total), values: store.cpuTotal.values, color: theme.cpu)
-                row("Memory", "\(Fmt.bytes(s.memory.used)) · \(s.memory.pressure.label)", values: store.memUsed.values, color: theme.memApp)
-                row("Network", "↓ \(Fmt.rate(s.network.rateIn))  ↑ \(Fmt.rate(s.network.rateOut))",
-                    values: store.netIn.values, color: theme.netIn, maxValue: 0)
-                if let g = s.gpu { row("GPU", Fmt.percent(g.utilization), values: store.gpu.values, color: theme.gpu) }
+                ForEach(graphed) { metric in
+                    switch metric {
+                    case .cpu: row("CPU", Fmt.percent(s.cpu.total), values: store.cpuTotal.values, color: theme.cpu)
+                    case .memory:
+                        row("Memory", "\(Fmt.bytes(s.memory.used)) · \(s.memory.pressure.label)", values: store.memUsed.values, color: theme.memApp)
+                    case .network:
+                        row("Network", "↓ \(Fmt.rate(s.network.rateIn))  ↑ \(Fmt.rate(s.network.rateOut))",
+                            values: store.netIn.values, color: theme.netIn, maxValue: 0)
+                    case .gpu:
+                        if let g = s.gpu { row("GPU", Fmt.percent(g.utilization), values: store.gpu.values, color: theme.gpu) }
+                    default: EmptyView()
+                    }
+                }
 
                 Divider()
                 Text("Top processes").font(.caption).foregroundStyle(.secondary)
