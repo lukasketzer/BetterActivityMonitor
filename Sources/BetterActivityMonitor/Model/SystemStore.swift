@@ -4,7 +4,7 @@ import Observation
 import SystemKit
 
 enum AppSection: String, CaseIterable, Identifiable {
-    case overview, processes, cpu, memory, disks, network, sensors, battery, energy
+    case overview, processes, cpu, memory, disks, network, sensors, battery, energy, history
     var id: String { rawValue }
 
     var title: String {
@@ -18,6 +18,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .sensors: "GPU & Sensors"
         case .battery: "Battery"
         case .energy: "Energy"
+        case .history: "History"
         }
     }
 
@@ -37,13 +38,14 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .sensors: "thermometer.medium"
         case .battery: "battery.75percent"
         case .energy: "bolt.fill"
+        case .history: "clock.arrow.circlepath"
         }
     }
 }
 
 /// Parts of the app that need `nettop` data.
 enum ConnectionConsumer: Hashable {
-    case networkPage, processTable
+    case networkPage, processTable, history
 }
 
 /// Combines what each consumer asks for into one connection mode.
@@ -129,6 +131,9 @@ final class SystemStore {
 
     @ObservationIgnored private let monitor = SystemMonitor()
     @ObservationIgnored private var connectionDemand = ConnectionDemand()
+    /// Writes minute history to disk; the History page reads it through `history`.
+    @ObservationIgnored let historyRecorder = HistoryRecorder()
+    var history: HistoryStore { historyRecorder.store }
     @ObservationIgnored private var loop: Task<Void, Never>?
     @ObservationIgnored private var tickSleep: Task<Void, Error>?
     @ObservationIgnored private var intervalObserver: NSKeyValueObservation?
@@ -139,6 +144,12 @@ final class SystemStore {
 
     init() {
         Defaults.register()
+        #if WIDGETS
+        historyRecorder.onMinute = { [weak self] minute in
+            guard let self else { return }
+            WidgetFeed.record(minute, disk: snapshot?.disks.volumes.first { $0.path == "/" }?.usedFraction ?? 0)
+        }
+        #endif
         start()
         DebugSnapshot.store = self
         if let start = ProcessInfo.processInfo.environment["BAM_START_SECTION"].flatMap(AppSection.init(rawValue:)) {
@@ -293,9 +304,6 @@ final class SystemStore {
             push(&diskRead, s.disks.readRate)
             push(&diskWrite, s.disks.writeRate)
             push(&processPower, s.processes.reduce(0) { $0 + $1.power })
-            #if WIDGETS
-            WidgetFeed.record(s, cpuHistory: cpuTotal, gpuHistory: gpu)
-            #endif
         }
 
         let m = s.memory
@@ -341,6 +349,10 @@ final class SystemStore {
         if appsDirty {
             appsDirty = false
             refreshApps()
+        }
+        if snapshot != nil {
+            let wanted = historyRecorder.record(s, systemPower: systemPower(of: s), name: displayName)
+            requestConnections(wanted, for: .history)
         }
         if !paused {
             processes = s.processes

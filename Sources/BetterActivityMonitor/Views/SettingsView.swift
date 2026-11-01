@@ -6,6 +6,7 @@ struct SettingsView: View {
             GeneralSettings().tabItem { Label("General", systemImage: "gearshape") }
             AppearanceSettings().tabItem { Label("Appearance", systemImage: "paintpalette") }
             ProcessSettings().tabItem { Label("Processes", systemImage: "list.bullet.rectangle") }
+            HistorySettings().tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
             MenuBarSettings().tabItem { Label("Menu Bar", systemImage: "menubar.rectangle") }
         }
         .frame(width: 520)
@@ -53,6 +54,46 @@ private struct GeneralSettings: View {
                 .font(.caption).foregroundStyle(.secondary)
         }
         .formStyle(.grouped)
+    }
+}
+
+private struct HistorySettings: View {
+    @Environment(SystemStore.self) private var store
+    @AppStorage(SettingsKey.historyEnabled) private var enabled = true
+    @AppStorage(SettingsKey.historyRetentionDays) private var days = 7
+    @State private var size: Int?
+    @State private var confirmClear = false
+
+    var body: some View {
+        Form {
+            Toggle("Record history", isOn: $enabled)
+            Text("Saves a summary of every minute the app runs: CPU, memory, GPU, network, disk, power and the busiest processes. It stays on this Mac.")
+                .font(.caption).foregroundStyle(.secondary)
+            Picker("Keep", selection: $days) {
+                Text("1 day").tag(1)
+                Text("7 days").tag(7)
+                Text("30 days").tag(30)
+            }
+            .disabled(!enabled)
+            LabeledContent("Size on disk", value: size.map { Fmt.bytes(UInt64($0)) } ?? "—")
+            Button("Clear History…", role: .destructive) { confirmClear = true }
+        }
+        .formStyle(.grouped)
+        .task(id: days) {
+            // Apply a shorter retention right away instead of at the next hourly prune.
+            await store.history.prune(olderThan: Date().addingTimeInterval(-Double(days) * 86_400))
+            size = await store.history.size()
+        }
+        .confirmationDialog("Clear all recorded history?", isPresented: $confirmClear) {
+            Button("Clear History", role: .destructive) {
+                Task {
+                    await store.history.clear()
+                    size = await store.history.size()
+                }
+            }
+        } message: {
+            Text("This can't be undone.")
+        }
     }
 }
 

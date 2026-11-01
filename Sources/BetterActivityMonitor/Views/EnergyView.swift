@@ -7,6 +7,11 @@ struct EnergyView: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
     @AppStorage("energy.sort") private var sort: EnergySort = .power
+    /// Average watts over the last hour by app, from the on-disk history.
+    @State private var hourAverage: [String: Double] = [:]
+    @State private var day = HistoryData()
+    @State private var dayRange = Date().addingTimeInterval(-86_400)...Date()
+    @State private var hover: Date?
 
     var body: some View {
         DetailPage {
@@ -41,16 +46,58 @@ struct EnergyView: View {
                         .labelsHidden()
                         .fixedSize()
                     } content: {
-                        EnergyTable(groups: Array(groups.prefix(25)))
+                        EnergyTable(groups: Array(groups.prefix(25)), hourAverage: hourAverage)
                     }
 
                     Panel("Preventing Sleep", symbol: "moon.zzz") {
                         SleepBlockerList(blockers: sleepBlockers(s))
                     }
+
+                    if !day[.power].isEmpty {
+                        Panel("Last 24 Hours", symbol: "clock.arrow.circlepath", destination: .history) {
+                            VStack(spacing: 4) {
+                                TimelineChart(series: [TimelineSeries(name: "Mac", color: theme.mid, values: day[.power])],
+                                              range: dayRange, bucket: TimeInterval(HistoryRange.day.bucket),
+                                              hover: $hover) { Fmt.watts($0) }
+                                    .frame(height: 100)
+                                if !day[.battery].isEmpty {
+                                    TimelineChart(series: [TimelineSeries(name: "Charge", color: theme.low, values: day[.battery])],
+                                                  range: dayRange, bucket: TimeInterval(HistoryRange.day.bucket), maxY: 1,
+                                                  hover: $hover) { Fmt.percent($0, digits: 0) }
+                                        .frame(height: 60)
+                                }
+                                TimelineAxis(range: dayRange)
+                            }
+                        }
+                    }
                 }
                 .padding()
             }
         }
+        .task {
+            while !Task.isCancelled {
+                await loadHistory()
+                try? await Task.sleep(for: .seconds(60))
+            }
+        }
+    }
+
+    private func loadHistory() async {
+        let now = Date()
+        let history = store.history
+        let hourAgo = now.addingTimeInterval(-3600)
+        let lastHour = await history.topProcesses(from: hourAgo, to: now, by: .energy, limit: 200)
+        // Over every minute recorded in the hour, so neither a fresh launch nor an app that only
+        // sometimes made the top few skews the average.
+        let recorded = await history.series(.cpu, from: hourAgo, to: now).count
+        let seconds = Double(max(recorded, 1) * 60)
+        hourAverage = Dictionary(lastHour.map { ($0.key, $0.energy / seconds) }, uniquingKeysWith: max)
+        dayRange = now.addingTimeInterval(-86_400)...now
+        var data = HistoryData()
+        for metric in [HistoryMetric.power, .battery] {
+            data.series[metric] = await history.series(metric, from: dayRange.lowerBound, to: now, bucket: HistoryRange.day.bucket)
+        }
+        day = data
     }
 
     /// The battery's view of total draw when it has one, plus what the processes account for.
@@ -74,6 +121,12 @@ private struct EnergyTable: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
     var groups: [EnergyGroup]
+    var hourAverage: [String: Double]
+
+    /// History keys apps by bundle path and lone processes by name.
+    private func average(_ group: EnergyGroup) -> Double? {
+        hourAverage[group.id.hasPrefix("pid:") ? group.name : group.id]
+    }
 
     var body: some View {
         let top = max(groups.map(\.power).max() ?? 0, 0.001)
@@ -81,6 +134,8 @@ private struct EnergyTable: View {
             HStack {
                 Text("App").frame(maxWidth: .infinity, alignment: .leading)
                 Text("Power").frame(width: 150, alignment: .trailing)
+                Text("Avg 1 h").frame(width: 70, alignment: .trailing)
+                    .help("Average power over the last hour, from History")
                 Text("Energy Used").frame(width: 90, alignment: .trailing)
                 Text("Wake Ups").frame(width: 80, alignment: .trailing)
                 Text("Processes").frame(width: 70, alignment: .trailing)
@@ -106,6 +161,7 @@ private struct EnergyTable: View {
                                 .frame(width: 70, alignment: .trailing)
                         }
                         .frame(width: 150, alignment: .trailing)
+                        Text(average(group).map(Fmt.watts) ?? "—").frame(width: 70, alignment: .trailing)
                         Text(group.hasTaskInfo ? Fmt.energy(group.energyTotal) : "—").frame(width: 90, alignment: .trailing)
                         Text(group.hasTaskInfo ? Fmt.compact(group.wakeups) : "—").frame(width: 80, alignment: .trailing)
                         Text("\(group.pids.count)").frame(width: 70, alignment: .trailing)

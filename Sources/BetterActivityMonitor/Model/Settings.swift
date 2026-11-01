@@ -28,6 +28,8 @@ enum SettingsKey {
     static let networkPage = "network.page"
     static let networkShowLoopback = "network.showLoopback"
     static let freezeDuringResize = "freezeDuringResize"
+    static let historyEnabled = "history.enabled"
+    static let historyRetentionDays = "history.retentionDays"
 }
 
 enum NetworkPage: String, CaseIterable, Identifiable {
@@ -72,6 +74,8 @@ enum Defaults {
             SettingsKey.processScope: ProcessScope.all.rawValue,
             SettingsKey.networkPage: NetworkPage.overview.rawValue,
             SettingsKey.networkShowLoopback: false,
+            SettingsKey.historyEnabled: true,
+            SettingsKey.historyRetentionDays: 7,
         ])
     }
 
@@ -90,6 +94,14 @@ enum Defaults {
 
     static var refreshInterval: Double {
         min(max(UserDefaults.standard.double(forKey: SettingsKey.refreshInterval), 0.1), 10)
+    }
+
+    static var historyEnabled: Bool { UserDefaults.standard.bool(forKey: SettingsKey.historyEnabled) }
+
+    /// Days of minute history kept on disk: 1, 7 or 30.
+    static var historyRetentionDays: Int {
+        let days = UserDefaults.standard.integer(forKey: SettingsKey.historyRetentionDays)
+        return [1, 7, 30].contains(days) ? days : 7
     }
 
     static var historyLength: Int {

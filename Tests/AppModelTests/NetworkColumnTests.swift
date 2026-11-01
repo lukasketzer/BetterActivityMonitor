@@ -11,10 +11,11 @@ final class NetworkColumnTests: XCTestCase {
         XCTAssertTrue(demand.set(.processes, for: .processTable))
         XCTAssertTrue(demand.set(.all, for: .networkPage))
         XCTAssertEqual(demand.effective, .all)
-        XCTAssertFalse(demand.set(.all, for: .networkPage), "unchanged")
+        XCTAssertFalse(demand.set(.processes, for: .history), "already covered by .all")
         XCTAssertTrue(demand.set(.off, for: .networkPage))
         XCTAssertEqual(demand.effective, .processes, "the table still needs per-process counters")
-        XCTAssertTrue(demand.set(.off, for: .processTable))
+        XCTAssertFalse(demand.set(.off, for: .processTable), "history still asks for .processes")
+        XCTAssertTrue(demand.set(.off, for: .history))
         XCTAssertEqual(demand.effective, .off)
     }
 
