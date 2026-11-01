@@ -7,6 +7,10 @@ struct EnergyView: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
     @AppStorage("energy.sort") private var sort: EnergySort = .power
+    @AppStorage(SettingsKey.historyEnabled) private var historyEnabled = false
+    @AppStorage(SettingsKey.historyRange) private var range: HistoryRange = .live
+
+    private var isLive: Bool { !historyEnabled || range == .live }
 
     var body: some View {
         DetailPage {
@@ -29,19 +33,30 @@ struct EnergyView: View {
                     }
 
                     Panel("Power Over Time", symbol: "chart.xyaxis.line") {
-                        HistoryChart(series: powerSeries, maxY: nil) { Fmt.watts($0) }
-                            .frame(height: 140)
+                        HistoryRangePicker()
+                    } content: {
+                        RangedChart(series: [HistorySeries(metric: .power, name: "Mac", color: theme.mid)],
+                                    maxY: nil, format: { Fmt.watts($0) }) {
+                            HistoryChart(series: powerSeries, maxY: nil) { Fmt.watts($0) }
+                        }
+                        .frame(height: 140)
                     }
 
-                    Panel("Power by App", symbol: "bolt.fill") {
-                        Picker("Sort by", selection: $sort) {
-                            ForEach(EnergySort.allCases) { Text($0.label).tag($0) }
+                    if isLive {
+                        Panel("Power by App", symbol: "bolt.fill") {
+                            Picker("Sort by", selection: $sort) {
+                                ForEach(EnergySort.allCases) { Text($0.label).tag($0) }
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            .fixedSize()
+                        } content: {
+                            EnergyTable(groups: Array(groups.prefix(25)))
                         }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .fixedSize()
-                    } content: {
-                        EnergyTable(groups: Array(groups.prefix(25)))
+                    } else {
+                        Panel("Energy by App · last \(range.rawValue)", symbol: "bolt.fill") {
+                            RangedTopList(ranking: .energy, count: 15) { EmptyView() }
+                        }
                     }
 
                     Panel("Preventing Sleep", symbol: "moon.zzz") {

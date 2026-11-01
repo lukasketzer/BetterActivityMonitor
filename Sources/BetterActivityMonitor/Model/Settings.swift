@@ -1,4 +1,5 @@
 import Foundation
+import SystemKit
 
 /// UserDefaults keys shared by `@AppStorage` call sites.
 enum SettingsKey {
@@ -28,6 +29,9 @@ enum SettingsKey {
     static let networkPage = "network.page"
     static let networkShowLoopback = "network.showLoopback"
     static let freezeDuringResize = "freezeDuringResize"
+    static let historyEnabled = HistorySettings.enabledKey
+    static let historyRetentionDays = HistorySettings.retentionKey
+    static let historyRange = "history.range"
 }
 
 enum NetworkPage: String, CaseIterable, Identifiable {
@@ -72,6 +76,10 @@ enum Defaults {
             SettingsKey.processScope: ProcessScope.all.rawValue,
             SettingsKey.networkPage: NetworkPage.overview.rawValue,
             SettingsKey.networkShowLoopback: false,
+            // Off until the user opts in: turning it on adds a login item.
+            SettingsKey.historyEnabled: false,
+            SettingsKey.historyRetentionDays: HistorySettings.defaultRetention,
+            SettingsKey.historyRange: HistoryRange.live.rawValue,
         ])
     }
 
@@ -91,6 +99,11 @@ enum Defaults {
     static var refreshInterval: Double {
         min(max(UserDefaults.standard.double(forKey: SettingsKey.refreshInterval), 0.1), 10)
     }
+
+    static var historyEnabled: Bool { UserDefaults.standard.bool(forKey: SettingsKey.historyEnabled) }
+
+    /// Days of minute history kept on disk: 1, 7 or 30.
+    static var historyRetentionDays: Int { HistorySettings.retentionDays(.standard) }
 
     static var historyLength: Int {
         min(max(UserDefaults.standard.integer(forKey: SettingsKey.historyLength), 30), 3600)

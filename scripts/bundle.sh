@@ -28,6 +28,13 @@ xcrun actool Resources/AppIcon.icon --compile "$APP/Contents/Resources" --app-ic
   --output-partial-info-plist build/actool-partial.plist >/dev/null
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
+# Background history agent, registered by the app through SMAppService (Settings → History).
+# Nested code is signed before the bundle around it.
+mkdir -p "$APP/Contents/Library/LaunchAgents"
+cp "$(swift build -c "$CONFIG" --show-bin-path)/BAMHistoryAgent" "$APP/Contents/MacOS/BAMHistoryAgent"
+cp Resources/dev.lukas.BetterActivityMonitor.HistoryAgent.plist "$APP/Contents/Library/LaunchAgents/"
+codesign --force --sign - --identifier dev.lukas.BetterActivityMonitor.HistoryAgent "$APP/Contents/MacOS/BAMHistoryAgent"
+
 codesign --force --sign - "$APP"
 # Make Finder/Dock pick up icon changes instead of a cached icon.
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP"

@@ -129,6 +129,12 @@ final class SystemStore {
 
     @ObservationIgnored private let monitor = SystemMonitor()
     @ObservationIgnored private var connectionDemand = ConnectionDemand()
+    /// Minute history written by the background agent (`BAMHistoryAgent`); the app only reads it,
+    /// apart from Settings clearing or pruning it.
+    /// `BAM_HISTORY_DB` reads another file instead (layout checks with made-up history).
+    @ObservationIgnored let history = ProcessInfo.processInfo.environment["BAM_HISTORY_DB"]
+        .map { HistoryDatabase(url: URL(fileURLWithPath: $0)) } ?? HistoryDatabase()
+    @ObservationIgnored let historyAgent = HistoryAgentService()
     @ObservationIgnored private var loop: Task<Void, Never>?
     @ObservationIgnored private var tickSleep: Task<Void, Error>?
     @ObservationIgnored private var intervalObserver: NSKeyValueObservation?
@@ -139,6 +145,11 @@ final class SystemStore {
 
     init() {
         Defaults.register()
+        // Keep the login item in line with the setting (e.g. after the app moved). Tooling runs that
+        // force history on via launch arguments set BAM_NO_AGENT so they never register one.
+        if ProcessInfo.processInfo.environment["BAM_NO_AGENT"] == nil {
+            historyAgent.sync(enabled: Defaults.historyEnabled)
+        }
         start()
         DebugSnapshot.store = self
         if let start = ProcessInfo.processInfo.environment["BAM_START_SECTION"].flatMap(AppSection.init(rawValue:)) {
@@ -395,13 +406,7 @@ final class SystemStore {
     func displayName(_ entry: ProcessEntry) -> String { apps[entry.pid]?.name ?? entry.name }
 
     /// What the whole Mac draws right now: battery telemetry when there is one, else the sum over processes.
-    var systemPower: Double? { snapshot.map(systemPower(of:)) }
-
-    func systemPower(of s: SystemSnapshot) -> Double {
-        if let load = s.battery?.systemLoad, load > 0 { return load }
-        if let w = s.battery?.watts, !(s.battery?.isPluggedIn ?? true) { return abs(w) }
-        return s.processes.reduce(0) { $0 + $1.power }
-    }
+    var systemPower: Double? { snapshot?.systemPower }
 
     func energyGroups(sort: EnergySort) -> [EnergyGroup] {
         EnergyRows.sorted(EnergyRows.groups(snapshot?.processes ?? [], apps: apps, displayName: displayName), by: sort)

@@ -42,6 +42,11 @@ struct NetworkOverviewPage: View {
     @Environment(\.theme) private var theme
     @AppStorage("network.interface") private var selected = ""
     @AppStorage("network.showInactive") private var showInactive = false
+    @AppStorage(SettingsKey.historyEnabled) private var historyEnabled = false
+    @AppStorage(SettingsKey.historyRange) private var range: HistoryRange = .live
+
+    /// History keeps totals only, so the interface choice applies to the live graph.
+    private var isLive: Bool { !historyEnabled || range == .live }
 
     var body: some View {
         DetailPage {
@@ -56,22 +61,32 @@ struct NetworkOverviewPage: View {
                         Spacer()
                     }
 
-                    Panel(selectedTitle(n), symbol: "chart.xyaxis.line") {
-                        Picker("Interface", selection: $selected) {
-                            Text("All interfaces").tag("")
-                            ForEach(interfaces) { Text("\($0.displayName) (\($0.name))").tag($0.name) }
+                    Panel(isLive ? selectedTitle(n) : "Throughput", symbol: "chart.xyaxis.line") {
+                        HStack(spacing: 8) {
+                            if isLive {
+                                Picker("Interface", selection: $selected) {
+                                    Text("All interfaces").tag("")
+                                    ForEach(interfaces) { Text("\($0.displayName) (\($0.name))").tag($0.name) }
+                                }
+                                .labelsHidden()
+                                .fixedSize()
+                            }
+                            HistoryRangePicker()
                         }
-                        .labelsHidden()
-                        .fixedSize()
                     } content: {
-                        HistoryChart(series: [
-                            ChartSeries(name: "Download", color: theme.netIn,
-                                        history: selected.isEmpty ? store.netIn : store.interfaceIn[selected] ?? History(capacity: 1)),
-                            ChartSeries(name: "Upload", color: theme.netOut,
-                                        history: selected.isEmpty ? store.netOut : store.interfaceOut[selected] ?? History(capacity: 1),
-                                        mirrored: true),
-                        ], maxY: nil) { Fmt.rate($0) }
-                            .frame(height: 200)
+                        RangedChart(series: [
+                            HistorySeries(metric: .netIn, name: "Download", color: theme.netIn),
+                            HistorySeries(metric: .netOut, name: "Upload", color: theme.netOut),
+                        ], maxY: nil, format: { Fmt.rate($0) }) {
+                            HistoryChart(series: [
+                                ChartSeries(name: "Download", color: theme.netIn,
+                                            history: selected.isEmpty ? store.netIn : store.interfaceIn[selected] ?? History(capacity: 1)),
+                                ChartSeries(name: "Upload", color: theme.netOut,
+                                            history: selected.isEmpty ? store.netOut : store.interfaceOut[selected] ?? History(capacity: 1),
+                                            mirrored: true),
+                            ], maxY: nil) { Fmt.rate($0) }
+                        }
+                        .frame(height: 200)
                     }
 
                     TopNetworkApps()
@@ -110,6 +125,13 @@ private struct TopNetworkApps: View {
             .sorted { $0.rateIn + $0.rateOut > $1.rateIn + $1.rateOut }
             .prefix(5)
         Panel("Top Apps", symbol: "app.connected.to.app.below.fill") {
+            RangedTopList(ranking: .net, count: 5) { live(Array(usage)) }
+        }
+    }
+
+    @ViewBuilder
+    private func live(_ usage: [ProcessNetUsage]) -> some View {
+        Group {
             if usage.isEmpty {
                 Text(store.snapshot?.connections == nil ? "Measuring…" : "No app is using the network right now.")
                     .font(.callout)
@@ -275,11 +297,18 @@ struct DisksView: View {
                     }
 
                     Panel("Disk Activity", symbol: "chart.xyaxis.line") {
-                        HistoryChart(series: [
-                            ChartSeries(name: "Read", color: theme.diskRead, history: store.diskRead),
-                            ChartSeries(name: "Write", color: theme.diskWrite, history: store.diskWrite, mirrored: true),
-                        ], maxY: nil) { Fmt.rate($0) }
-                            .frame(height: 200)
+                        HistoryRangePicker()
+                    } content: {
+                        RangedChart(series: [
+                            HistorySeries(metric: .diskRead, name: "Read", color: theme.diskRead),
+                            HistorySeries(metric: .diskWrite, name: "Write", color: theme.diskWrite),
+                        ], maxY: nil, format: { Fmt.rate($0) }) {
+                            HistoryChart(series: [
+                                ChartSeries(name: "Read", color: theme.diskRead, history: store.diskRead),
+                                ChartSeries(name: "Write", color: theme.diskWrite, history: store.diskWrite, mirrored: true),
+                            ], maxY: nil) { Fmt.rate($0) }
+                        }
+                        .frame(height: 200)
                     }
 
                     Panel("Volumes", symbol: "externaldrive.connected.to.line.below") {
@@ -307,8 +336,10 @@ struct DisksView: View {
                             }
                         }
                         Panel("Top Disk Activity", symbol: "arrow.up.arrow.down") {
-                            TopProcessList(entries: store.top(by: \.diskTotalRate, count: 8)) {
-                                "\(Fmt.rate($0.diskReadRate)) / \(Fmt.rate($0.diskWriteRate))"
+                            RangedTopList(ranking: .disk) {
+                                TopProcessList(entries: store.top(by: \.diskTotalRate, count: 8)) {
+                                    "\(Fmt.rate($0.diskReadRate)) / \(Fmt.rate($0.diskWriteRate))"
+                                }
                             }
                         }
                     }

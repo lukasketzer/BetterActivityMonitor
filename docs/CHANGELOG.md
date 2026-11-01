@@ -14,6 +14,15 @@ tagged version into the GitHub Release notes; nightly builds show the `Unrelease
 - A new menu bar item that looks like the system's own icons. Show your metrics as rings, percentages or absolute
   values (load, memory and disk in use, battery time left), pick which ones and their order, and preview it in
   Settings. CPU, memory, GPU, startup disk, battery, CPU temperature and network are available.
+- History: turn on Settings → History and a small background agent records a summary of every minute (CPU,
+  memory, GPU, network, disk, power, temperatures and the busiest apps), also while the app is closed. The CPU,
+  Memory, Disks, Network, GPU & Sensors, Battery and Energy pages get a Live / 1h / 24h / 7d / 30d switch for their
+  graphs and top lists. Keeps 1, 7 or 30 days on this Mac; the agent uses under 0.1% of one core.
+- Energy page: power per app (helpers count toward their app), what keeps the Mac awake, and Power and Energy
+  columns in the process list.
+- Network columns in the process list (received and sent per second and in total) and a Top Apps card on the
+  Network page.
+- Set the update interval in milliseconds from the toolbar, like btop: click − / + or type a value (100–10 000 ms).
 - Nightly builds of the latest changes on the [nightly release](https://github.com/lukasketzer/BetterActivityMonitor/releases/tag/nightly).
 
 ### Changed

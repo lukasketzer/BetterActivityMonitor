@@ -152,9 +152,14 @@ struct SensorsView: View {
                         Spacer()
                     }
                     Panel(g.coreCount.map { "\(g.name) · \($0)-core GPU" } ?? g.name, symbol: "cube.transparent") {
-                        HistoryChart(series: [ChartSeries(name: "Utilization", color: theme.gpu, history: store.gpu)],
-                                     maxY: 1) { Fmt.percent($0, digits: 0) }
-                            .frame(height: 160)
+                        HistoryRangePicker()
+                    } content: {
+                        RangedChart(series: [HistorySeries(metric: .gpu, name: "Utilization", color: theme.gpu)],
+                                    maxY: 1, format: { Fmt.percent($0, digits: 0) }) {
+                            HistoryChart(series: [ChartSeries(name: "Utilization", color: theme.gpu, history: store.gpu)],
+                                         maxY: 1) { Fmt.percent($0, digits: 0) }
+                        }
+                        .frame(height: 160)
                     }
                 }
 
@@ -176,9 +181,12 @@ struct SensorsView: View {
                 } else {
                     if store.cpuTemperature.points.count > 1 {
                         Panel("CPU Temperature", symbol: "thermometer.medium") {
-                            HistoryChart(series: [ChartSeries(name: "Hottest CPU die", color: theme.temperature, history: store.cpuTemperature)],
-                                         maxY: nil) { Fmt.temperature($0, fahrenheit: fahrenheit) }
-                                .frame(height: 140)
+                            RangedChart(series: [HistorySeries(metric: .cpuTempMax, name: "Hottest CPU die", color: theme.temperature)],
+                                        maxY: nil, format: { Fmt.temperature($0, fahrenheit: fahrenheit) }) {
+                                HistoryChart(series: [ChartSeries(name: "Hottest CPU die", color: theme.temperature, history: store.cpuTemperature)],
+                                             maxY: nil) { Fmt.temperature($0, fahrenheit: fahrenheit) }
+                            }
+                            .frame(height: 140)
                         }
                     }
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 16, alignment: .top)], spacing: 16) {
@@ -253,15 +261,23 @@ struct BatteryView: View {
                     }
 
                     Panel("Charge", symbol: "chart.xyaxis.line") {
-                        HistoryChart(series: [ChartSeries(name: "Charge", color: theme.low, history: store.batteryCharge)],
-                                     maxY: 1) { Fmt.percent($0, digits: 0) }
-                            .frame(height: 120)
+                        HistoryRangePicker()
+                    } content: {
+                        RangedChart(series: [HistorySeries(metric: .battery, name: "Charge", color: theme.low)],
+                                    maxY: 1, format: { Fmt.percent($0, digits: 0) }) {
+                            HistoryChart(series: [ChartSeries(name: "Charge", color: theme.low, history: store.batteryCharge)],
+                                         maxY: 1) { Fmt.percent($0, digits: 0) }
+                        }
+                        .frame(height: 120)
                     }
                     if store.batteryPower.points.count > 1 {
                         Panel("Power", symbol: "bolt") {
-                            HistoryChart(series: [ChartSeries(name: "Watts", color: theme.mid, history: store.batteryPower)],
-                                         maxY: nil) { String(format: "%.1f W", $0) }
-                                .frame(height: 120)
+                            RangedChart(series: [HistorySeries(metric: .power, name: "Mac", color: theme.mid)],
+                                        maxY: nil, format: { Fmt.watts($0) }) {
+                                HistoryChart(series: [ChartSeries(name: "Watts", color: theme.mid, history: store.batteryPower)],
+                                             maxY: nil) { String(format: "%.1f W", $0) }
+                            }
+                            .frame(height: 120)
                         }
                     }
                     Panel("Details", symbol: "info.circle") {
