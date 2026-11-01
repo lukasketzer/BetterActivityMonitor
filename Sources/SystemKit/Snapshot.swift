@@ -16,6 +16,8 @@ public struct SystemSnapshot: Sendable {
     public var processes: [ProcessEntry]
     /// Nil unless connection tracking is on (`SystemMonitor.setConnectionMode`).
     public var connections: ConnectionStats?
+    /// Power assertions by process.
+    public var powerAssertions: [pid_t: [PowerAssertion]] = [:]
 }
 
 // MARK: CPU
@@ -234,4 +236,47 @@ public struct ProcessEntry: Sendable, Identifiable, Hashable {
     public var diskReadTotal: UInt64
     public var diskWriteTotal: UInt64
     public var idleWakeupsPerSecond: Double
+    /// Network bytes per second and since launch, from `nettop`; zero while connection tracking is off.
+    public var netRateIn: Double = 0
+    public var netRateOut: Double = 0
+    public var netTotalIn: UInt64 = 0
+    public var netTotalOut: UInt64 = 0
+    /// Watts over the last tick, from the kernel's per-process energy counter (`ri_energy_nj`).
+    public var power: Double = 0
+    /// Joules since the process started.
+    public var energyTotal: Double = 0
+}
+
+/// A power assertion: a process asking macOS not to sleep (the system, the display, or both).
+public struct PowerAssertion: Sendable, Hashable {
+    /// IOKit type, e.g. `PreventUserIdleSystemSleep`.
+    public var type: String
+    /// The reason the process gave, e.g. "Playing video".
+    public var name: String
+    public var created: Date?
+
+    public init(type: String, name: String, created: Date?) {
+        self.type = type
+        self.name = name
+        self.created = created
+    }
+
+    /// Short, user-facing description of what the assertion blocks.
+    public var effect: String {
+        switch type {
+        case "PreventUserIdleDisplaySleep", "NoDisplaySleepAssertion": "Keeps the display on"
+        case "PreventUserIdleSystemSleep", "NoIdleSleepAssertion": "Prevents idle sleep"
+        case "PreventSystemSleep": "Prevents sleep"
+        case "PreventDiskIdle": "Keeps disks awake"
+        case "UserIsActive": "Marks the user as active"
+        case "BackgroundTask", "ApplePushServiceTask": "Background task"
+        default: type
+        }
+    }
+
+    /// Whether this keeps the Mac (or its display) awake, as opposed to bookkeeping assertions.
+    public var preventsSleep: Bool {
+        ["PreventUserIdleDisplaySleep", "NoDisplaySleepAssertion", "PreventUserIdleSystemSleep",
+         "NoIdleSleepAssertion", "PreventSystemSleep"].contains(type)
+    }
 }

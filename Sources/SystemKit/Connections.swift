@@ -5,12 +5,17 @@ import Foundation
 
 /// Which flows `nettop` is asked for. Cost scales with the number of flows, so the cheap mode skips the
 /// many loopback and unbound sockets (measured: ~10 ms vs ~35 ms CPU per run, see `sysbench nettop`).
-public enum ConnectionMode: Sendable {
+/// Modes are ordered by cost; several consumers combine to the highest one they ask for.
+public enum ConnectionMode: Int, Sendable, Comparable {
     case off
+    /// Per-process byte counters only (`nettop -P`), no flows: under 10 ms CPU per run.
+    case processes
     /// Flows on Wi-Fi and wired interfaces only.
     case external
     /// Every socket, including loopback, VPN and listening sockets.
     case all
+
+    public static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
 }
 
 public struct Endpoint: Sendable, Hashable {

@@ -25,10 +25,15 @@ final class AppCPUTests: XCTestCase {
     func testCPU() throws { try assertCPU(screen: "cpu", below: 10) }
     func testMemory() throws { try assertCPU(screen: "memory", below: 10) }
     func testSensors() throws { try assertCPU(screen: "sensors", below: 12) }
+    func testEnergy() throws { try assertCPU(screen: "energy", below: 12) }
+    /// The fastest interval the toolbar allows. A launch argument overrides the stored setting
+    /// (NSArgumentDomain) without changing it. Recorded rather than tight: 10 ticks a second is the user's call.
+    func testOverviewAt100ms() throws { try assertCPU(screen: "overview", below: 60, args: ["-refreshInterval", "0.1"]) }
 
-    private func assertCPU(screen: String, below budget: Double) throws {
+    private func assertCPU(screen: String, below budget: Double, args: [String] = []) throws {
         kill()
-        try shell("/usr/bin/open", ["-n", "--env", "BAM_START_SECTION=\(screen)", Self.app.path])
+        try shell("/usr/bin/open", ["-n", "--env", "BAM_START_SECTION=\(screen)", Self.app.path]
+            + (args.isEmpty ? [] : ["--args"] + args))
         defer { kill() }
         Thread.sleep(forTimeInterval: warmup)
         let pid = try XCTUnwrap(Int32(try shell("/usr/bin/pgrep", ["-f", "MacOS/BetterActivityMonitor"])
@@ -36,7 +41,7 @@ final class AppCPUTests: XCTestCase {
         let start = try cpuSeconds(pid)
         Thread.sleep(forTimeInterval: window)
         let percent = (try cpuSeconds(pid) - start) / window * 100
-        print(String(format: "%@: %.1f%% CPU", screen, percent))
+        print(String(format: "%@%@: %.1f%% CPU", screen, args.isEmpty ? "" : " " + args.joined(separator: " "), percent))
         XCTAssertLessThan(percent, budget, "\(screen) used \(percent)% CPU")
     }
 

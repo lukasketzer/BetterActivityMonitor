@@ -137,6 +137,19 @@ private struct InspectorContent: View {
                 StatRow("Disk read", "\(Fmt.bytes(entry.diskReadTotal)) · \(Fmt.rate(entry.diskReadRate))")
                 StatRow("Disk written", "\(Fmt.bytes(entry.diskWriteTotal)) · \(Fmt.rate(entry.diskWriteRate))")
                 StatRow("Idle wake ups", Fmt.number(entry.idleWakeupsPerSecond) + "/s")
+                StatRow("Power", Fmt.watts(entry.power))
+                StatRow("Energy used", Fmt.energy(entry.energyTotal))
+            }
+            if let assertions = store.snapshot?.powerAssertions[entry.pid], !assertions.isEmpty {
+                Divider().gridCellUnsizedAxes(.horizontal)
+                ForEach(Array(assertions.enumerated()), id: \.offset) { _, a in
+                    StatRow(a.effect, a.name.isEmpty ? "—" : a.name)
+                }
+            }
+            if entry.netTotalIn + entry.netTotalOut > 0 {
+                Divider().gridCellUnsizedAxes(.horizontal)
+                StatRow("Received", "\(Fmt.bytes(entry.netTotalIn)) · \(Fmt.rate(entry.netRateIn))")
+                StatRow("Sent", "\(Fmt.bytes(entry.netTotalOut)) · \(Fmt.rate(entry.netRateOut))")
             }
             if let details {
                 if let files = details.openFiles { StatRow("Open files", "\(files)") }

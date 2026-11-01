@@ -16,6 +16,9 @@ struct ContentView: View {
             detail
                 .modifier(FreezeDuringLiveResize())
                 .navigationTitle(store.section?.title ?? "BetterActivityMonitor")
+                .toolbar {
+                    ToolbarItem(placement: .navigation) { RefreshIntervalControl() }
+                }
         }
         // Showing the sidebar pushes the detail aside instead of floating over it.
         .navigationSplitViewStyle(.balanced)
@@ -68,6 +71,7 @@ struct ContentView: View {
         case .network: NetworkView()
         case .sensors: SensorsView()
         case .battery: BatteryView()
+        case .energy: EnergyView()
         }
     }
 }
@@ -124,6 +128,8 @@ private struct Sidebar: View {
                 if store.snapshot?.battery != nil {
                     row(.battery, value: store.snapshot?.battery.map { Fmt.percent($0.charge, digits: 0) })
                 }
+                row(.energy, value: store.systemPower.map(Fmt.watts),
+                    graph: store.processPower.values, max: 1, color: theme.mid)
             }
         }
         .listStyle(.sidebar)

@@ -5,7 +5,11 @@ import SystemKit
 /// Columns of the process table. Order here is the default on-screen order.
 enum ProcessColumn: String, CaseIterable {
     case name, cpu, memory, memPercent, cpuTime, threads, pid, user, state
-    case readRate, writeRate, resident, readTotal, writeTotal, wakeups, ppid, nice, started, path
+    case power, readRate, writeRate, netIn, netOut, resident, readTotal, writeTotal, netInTotal, netOutTotal
+    case energy, wakeups, preventsSleep, ppid, nice, started, path
+
+    /// Columns filled from `nettop`; it only runs while one of them is visible.
+    static let network: Set<ProcessColumn> = [.netIn, .netOut, .netInTotal, .netOutTotal]
 
     var title: String {
         switch self {
@@ -20,6 +24,13 @@ enum ProcessColumn: String, CaseIterable {
         case .state: "State"
         case .readRate: "Read/s"
         case .writeRate: "Write/s"
+        case .power: "Power"
+        case .energy: "Energy"
+        case .preventsSleep: "Sleep"
+        case .netIn: "Rcvd/s"
+        case .netOut: "Sent/s"
+        case .netInTotal: "Bytes Rcvd"
+        case .netOutTotal: "Bytes Sent"
         case .resident: "Real Mem"
         case .readTotal: "Bytes Read"
         case .writeTotal: "Bytes Written"
@@ -37,20 +48,28 @@ enum ProcessColumn: String, CaseIterable {
         case .path: 320
         case .started: 130
         case .cpu: 90
-        case .memory, .cpuTime, .readRate, .writeRate, .resident, .readTotal, .writeTotal, .wakeups: 90
+        case .memory, .cpuTime, .readRate, .writeRate, .resident, .readTotal, .writeTotal, .wakeups,
+             .netIn, .netOut, .netInTotal, .netOutTotal, .power, .energy: 90
         case .user, .state: 80
         default: 60
         }
     }
 
+    /// The network columns are off by default: showing one runs `nettop -P` every tick, about 12 ms of CPU
+    /// (`sysbench nettop`), which would double the Overview's baseline cost.
     var hiddenByDefault: Bool {
-        [.resident, .readTotal, .writeTotal, .wakeups, .ppid, .nice, .started, .path].contains(self)
+        [.resident, .readTotal, .writeTotal, .energy, .wakeups, .preventsSleep, .ppid, .nice, .started, .path].contains(self)
+            || Self.network.contains(self)
     }
 
-    var isNumeric: Bool { ![.name, .user, .state, .path, .started].contains(self) }
+    var isNumeric: Bool { ![.name, .user, .state, .path, .started, .preventsSleep].contains(self) }
 
     /// Values for other users' processes are withheld by the kernel; these columns stay meaningful anyway.
-    private var alwaysAvailable: Bool { [.name, .pid, .ppid, .user, .state, .nice, .started, .path].contains(self) }
+    /// nettop sees every user's processes, so the network columns count too.
+    private var alwaysAvailable: Bool {
+        [.name, .pid, .ppid, .user, .state, .nice, .started, .path, .preventsSleep].contains(self)
+            || Self.network.contains(self)
+    }
 
     func comparator(ascending: Bool) -> KeyPathComparator<ProcessRow> {
         let order: SortOrder = ascending ? .forward : .reverse
@@ -66,6 +85,13 @@ enum ProcessColumn: String, CaseIterable {
         case .state: return KeyPathComparator(\.state, order: order)
         case .readRate: return KeyPathComparator(\.diskReadRate, order: order)
         case .writeRate: return KeyPathComparator(\.diskWriteRate, order: order)
+        case .power: return KeyPathComparator(\.power, order: order)
+        case .energy: return KeyPathComparator(\.energyTotal, order: order)
+        case .preventsSleep: return KeyPathComparator(\.preventsSleepRank, order: order)
+        case .netIn: return KeyPathComparator(\.netRateIn, order: order)
+        case .netOut: return KeyPathComparator(\.netRateOut, order: order)
+        case .netInTotal: return KeyPathComparator(\.netTotalIn, order: order)
+        case .netOutTotal: return KeyPathComparator(\.netTotalOut, order: order)
         case .resident: return KeyPathComparator(\.resident, order: order)
         case .readTotal: return KeyPathComparator(\.diskReadTotal, order: order)
         case .writeTotal: return KeyPathComparator(\.diskWriteTotal, order: order)
@@ -91,6 +117,17 @@ enum ProcessColumn: String, CaseIterable {
         case .state: return row.state.rawValue
         case .readRate: return row.diskReadRate > 0 ? Fmt.rate(row.diskReadRate) : "0"
         case .writeRate: return row.diskWriteRate > 0 ? Fmt.rate(row.diskWriteRate) : "0"
+        case .power: return Fmt.watts(row.isCollapsed ? row.subtreePower : row.power)
+        case .energy: return Fmt.energy(row.energyTotal)
+        case .preventsSleep: return row.preventsSleep ? "Preventing" : ""
+        case .netIn:
+            let value = row.isCollapsed ? row.subtreeNetIn : row.netRateIn
+            return value > 0 ? Fmt.rate(value) : "0"
+        case .netOut:
+            let value = row.isCollapsed ? row.subtreeNetOut : row.netRateOut
+            return value > 0 ? Fmt.rate(value) : "0"
+        case .netInTotal: return Fmt.bytes(row.netTotalIn)
+        case .netOutTotal: return Fmt.bytes(row.netTotalOut)
         case .resident: return Fmt.bytes(row.resident)
         case .readTotal: return Fmt.bytes(row.diskReadTotal)
         case .writeTotal: return Fmt.bytes(row.diskWriteTotal)
@@ -216,11 +253,29 @@ final class ProcessTableController: NSObject, NSTableViewDataSource, NSTableView
     // MARK: Columns
 
     private var hiddenColumns: Set<String> {
-        get {
-            if let saved = UserDefaults.standard.stringArray(forKey: Self.hiddenKey) { return Set(saved) }
-            return Set(ProcessColumn.allCases.filter(\.hiddenByDefault).map(\.rawValue))
+        get { Self.hiddenColumns() }
+        set {
+            UserDefaults.standard.set(Array(newValue), forKey: Self.hiddenKey)
+            UserDefaults.standard.set(ProcessColumn.allCases.map(\.rawValue), forKey: Self.knownKey)
         }
-        set { UserDefaults.standard.set(Array(newValue), forKey: Self.hiddenKey) }
+    }
+
+    private static let knownKey = "ProcessTable.knownColumns"
+
+    /// Hidden column ids. Columns added after the user last changed the list start out at their default.
+    static func hiddenColumns(_ defaults: UserDefaults = .standard) -> Set<String> {
+        let byDefault = Set(ProcessColumn.allCases.filter(\.hiddenByDefault).map(\.rawValue))
+        guard let saved = defaults.stringArray(forKey: hiddenKey) else { return byDefault }
+        // Lists saved before `knownKey` existed knew every column up to `path`, none of the network ones.
+        let known = defaults.stringArray(forKey: knownKey).map(Set.init)
+            ?? Set(ProcessColumn.allCases.filter { !ProcessColumn.network.contains($0) }.map(\.rawValue))
+        return Set(saved).union(byDefault.subtracting(known))
+    }
+
+    /// Whether any visible column needs connection data.
+    static var showsNetworkColumns: Bool {
+        let hidden = hiddenColumns()
+        return ProcessColumn.network.contains { !hidden.contains($0.rawValue) }
     }
 
     func applyHiddenColumns(to table: NSTableView) {
@@ -233,6 +288,7 @@ final class ProcessTableController: NSObject, NSTableViewDataSource, NSTableView
         if hidden.contains(column.rawValue) { hidden.remove(column.rawValue) } else { hidden.insert(column.rawValue) }
         hiddenColumns = hidden
         if let table = tableView { applyHiddenColumns(to: table) }
+        parent.store.processTableColumnsChanged()
     }
 
     // MARK: Data source / delegate
@@ -325,7 +381,9 @@ final class ProcessTableController: NSObject, NSTableViewDataSource, NSTableView
             menu.addItem(.separator())
             menu.addItem(ActionMenuItem("Reset Columns") { [weak self] in
                 UserDefaults.standard.removeObject(forKey: Self.hiddenKey)
+                UserDefaults.standard.removeObject(forKey: Self.knownKey)
                 if let table = self?.tableView { self?.applyHiddenColumns(to: table) }
+                self?.parent.store.processTableColumnsChanged()
             })
             return
         }

@@ -32,7 +32,7 @@ enum NettopBench {
     /// Full `SystemMonitor.sample()` cost per connection mode: our own CPU plus nettop's.
     static func runModes(ticks: Int) async {
         print("SystemMonitor CPU per tick (own + nettop) over \(ticks) ticks")
-        for (name, mode) in [("off", ConnectionMode.off), ("external", .external), ("all", .all)] {
+        for (name, mode) in [("off", ConnectionMode.off), ("processes", .processes), ("external", .external), ("all", .all)] {
             let monitor = SystemMonitor()
             await monitor.setConnectionMode(mode)
             _ = await monitor.sample()

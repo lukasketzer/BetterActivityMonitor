@@ -63,7 +63,7 @@ struct AppCommands: Commands {
             Divider()
             ForEach(Array(AppSection.allCases.enumerated()), id: \.element) { index, section in
                 Button(section.title) { store.section = section }
-                    .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
+                    .keyboardShortcut(AppSection.shortcut(index: index), modifiers: .command)
             }
             Divider()
             Button("Faster Updates") { store.adjustRefresh(faster: true) }

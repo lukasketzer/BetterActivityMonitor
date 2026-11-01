@@ -110,6 +110,55 @@ final class AddressEnrichmentTests: XCTestCase {
     }
 }
 
+final class ProcessModeTests: XCTestCase {
+    // `nettop -P -L 1 -n -x`: process summary lines only.
+    let fixture = """
+    time,,interface,state,bytes_in,bytes_out,rx_dupe,rx_ooo,re-tx,rtt_avg,rcvsize,tx_win,tc_class,tc_mgt,cc_algo,P,C,R,W,arch,
+    11:12:52.011041,launchd.1,,,0,0,0,0,0,,,,,,,,,,,,
+    11:12:52.011043,syslogd.377,,,0,9123,0,0,0,,,,,,,,,,,,
+    11:12:52.011044,apsd.383,,,22793,39022,111,0,64,,,,,,,,,,,,
+    """
+
+    func testProcessSummaryParsesWithoutFlows() {
+        let parsed = NettopParser.parse(fixture)
+        XCTAssertEqual(parsed.processes.map(\.pid), [1, 377, 383])
+        XCTAssertEqual(parsed.processes.last?.bytesIn, 22793)
+        XCTAssertTrue(parsed.flows.isEmpty)
+    }
+
+    func testModesAreOrderedByCost() {
+        XCTAssertLessThan(ConnectionMode.off, .processes)
+        XCTAssertLessThan(ConnectionMode.processes, .external)
+        XCTAssertLessThan(ConnectionMode.external, .all)
+        XCTAssertEqual(ConnectionSampler.arguments(for: .processes).first, "-P")
+        XCTAssertFalse(ConnectionSampler.arguments(for: .all).contains("-P"))
+    }
+
+    func testUsageIsAttachedByPid() {
+        var entries = [entry(10), entry(20)]
+        SystemMonitor.attach([ProcessNetUsage(pid: 20, name: "x", bytesIn: 5, bytesOut: 6, rateIn: 1, rateOut: 2)], to: &entries)
+        XCTAssertEqual(entries[0].netTotalIn, 0)
+        XCTAssertEqual(entries[1].netTotalIn, 5)
+        XCTAssertEqual(entries[1].netRateOut, 2)
+    }
+
+    /// Real nettop in the cheap mode reports this test process's own traffic counters, and no flows.
+    func testRealProcessModeReturnsProcessesOnly() throws {
+        let sampler = ConnectionSampler()
+        sampler.mode = .processes
+        let stats = try XCTUnwrap(sampler.sample(now: Date()))
+        XCTAssertFalse(stats.processes.isEmpty)
+        XCTAssertTrue(stats.flows.isEmpty)
+    }
+
+    private func entry(_ pid: pid_t) -> ProcessEntry {
+        ProcessEntry(pid: pid, ppid: 1, uid: 501, user: "me", name: "p", path: "", state: .running, nice: 0,
+                     startTime: .distantPast, hasTaskInfo: true, cpu: 0, cpuTime: 0, memory: 0, resident: 0,
+                     threads: 1, diskReadRate: 0, diskWriteRate: 0, diskReadTotal: 0, diskWriteTotal: 0,
+                     idleWakeupsPerSecond: 0)
+    }
+}
+
 final class ConnectionSamplerTests: XCTestCase {
     func testFastRefreshReusesTheLastNettopRun() throws {
         let sampler = ConnectionSampler()

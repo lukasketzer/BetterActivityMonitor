@@ -19,14 +19,26 @@ private struct GeneralSettings: View {
     @AppStorage(SettingsKey.fahrenheit) private var fahrenheit = false
     @AppStorage(SettingsKey.freezeDuringResize) private var freezeDuringResize = true
 
+    /// The stored seconds as whole milliseconds; typed values outside the range snap to it.
+    private var milliseconds: Binding<Int> {
+        Binding { Int((interval * 1000).rounded()) } set: { RefreshInterval.set($0) }
+    }
+
     var body: some View {
         Form {
-            Picker("Update every", selection: $interval) {
-                ForEach([0.25, 0.5, 1, 2, 3, 5, 10], id: \.self) { value in
-                    Text(value < 1 ? "\(Int(value * 1000)) ms" : "\(Int(value)) s").tag(value)
+            LabeledContent("Update every") {
+                HStack(spacing: 6) {
+                    TextField("Interval", value: milliseconds, format: .number.grouping(.never))
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 70)
+                    Text("ms").foregroundStyle(.secondary)
+                    Stepper("Interval", value: milliseconds, in: RefreshInterval.range, step: 100)
+                        .labelsHidden()
                 }
             }
-            Text("Faster updates are smoother but cost more CPU. Shortcut: ⌘+ / ⌘−.")
+            Text(interval < 0.25
+                 ? "Below 250 ms the samplers alone use a noticeable share of a core."
+                 : "\(RefreshInterval.range.lowerBound)–\(RefreshInterval.range.upperBound) ms. Faster updates are smoother but cost more CPU. Also in the toolbar, and with ⌘+ / ⌘−.")
                 .font(.caption).foregroundStyle(.secondary)
             Picker("Graph history", selection: $history) {
                 ForEach([60, 120, 300, 600, 1800], id: \.self) { Text("\($0) samples").tag($0) }

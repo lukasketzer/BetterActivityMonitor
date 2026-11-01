@@ -74,6 +74,8 @@ struct NetworkOverviewPage: View {
                             .frame(height: 200)
                     }
 
+                    TopNetworkApps()
+
                     Panel("Interfaces", symbol: "point.3.connected.trianglepath.dotted") {
                         Toggle("Show inactive", isOn: $showInactive).toggleStyle(.checkbox)
                     } content: {
@@ -94,6 +96,49 @@ struct NetworkOverviewPage: View {
     private func selectedTitle(_ n: NetworkStats) -> String {
         guard let iface = n.interfaces.first(where: { $0.name == selected }) else { return "Throughput" }
         return "Throughput — \(iface.displayName)"
+    }
+}
+
+/// The apps moving the most data right now, from nettop's per-process counters.
+private struct TopNetworkApps: View {
+    @Environment(SystemStore.self) private var store
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        let usage = (store.snapshot?.connections?.processes ?? [])
+            .filter { $0.rateIn + $0.rateOut > 0 }
+            .sorted { $0.rateIn + $0.rateOut > $1.rateIn + $1.rateOut }
+            .prefix(5)
+        Panel("Top Apps", symbol: "app.connected.to.app.below.fill") {
+            if usage.isEmpty {
+                Text(store.snapshot?.connections == nil ? "Measuring…" : "No app is using the network right now.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(spacing: 6) {
+                    ForEach(Array(usage)) { app in
+                        let entry = store.process(app.pid)
+                        HStack(spacing: 8) {
+                            if let icon = store.apps[app.pid]?.icon {
+                                Image(nsImage: icon).resizable().frame(width: 16, height: 16)
+                            } else {
+                                Image(systemName: "terminal").frame(width: 16, height: 16).foregroundStyle(.secondary)
+                            }
+                            // nettop cuts names to 15 characters; prefer the full name.
+                            Text(entry.map(store.displayName) ?? app.name).lineLimit(1)
+                            Spacer()
+                            Text("↓ \(Fmt.rate(app.rateIn))").foregroundStyle(theme.netIn).frame(width: 100, alignment: .trailing)
+                            Text("↑ \(Fmt.rate(app.rateOut))").foregroundStyle(theme.netOut).frame(width: 100, alignment: .trailing)
+                        }
+                        .font(.callout.monospacedDigit())
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 2) { store.reveal(app.pid) }
+                        .help("Double-click to show this process")
+                    }
+                }
+            }
+        }
     }
 }
 

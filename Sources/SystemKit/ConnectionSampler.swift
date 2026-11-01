@@ -81,7 +81,11 @@ final class ConnectionSampler {
 
     static func arguments(for mode: ConnectionMode) -> [String] {
         let base = ["-L", "1", "-n", "-x"]
-        return mode == .external ? base + ["-t", "wifi", "-t", "wired"] : base
+        switch mode {
+        case .processes: return ["-P"] + base
+        case .external: return base + ["-t", "wifi", "-t", "wired"]
+        case .off, .all: return base
+        }
     }
 
     private static func runNettop(_ mode: ConnectionMode) -> String? {

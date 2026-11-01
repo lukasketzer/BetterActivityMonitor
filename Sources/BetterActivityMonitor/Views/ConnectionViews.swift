@@ -33,18 +33,18 @@ struct NetworkView: View {
         .onAppear { updateMode() }
         .onChange(of: current) { updateMode() }
         .onChange(of: showLoopback) { updateMode() }
-        .onDisappear { store.setConnectionMode(.off) }
+        .onDisappear { store.releaseConnections(for: .networkPage) }
     }
 
-    /// Only the connection pages run nettop. Listening and loopback sockets need the full
+    /// The overview only needs per-process totals (cheap `nettop -P`). Listening and loopback sockets need the full
     /// (about 2× costlier) run; see `ConnectionMode`.
     private func updateMode() {
         let mode: ConnectionMode = switch current {
-        case .overview: .off
+        case .overview: .processes
         case .listening: .all
         case .connections, .log: showLoopback ? .all : .external
         }
-        store.setConnectionMode(mode)
+        store.requestConnections(mode, for: .networkPage)
     }
 }
 

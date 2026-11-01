@@ -36,6 +36,8 @@ struct ProcessTable: View {
             .onChange(of: regex) { rebuild() }
             .onChange(of: scope) { rebuild() }
             .onChange(of: cpuPerCore) { rebuild() }
+            .onAppear { store.processTableAppeared() }
+            .onDisappear { store.processTableDisappeared() }
             .overlay {
                 if rows.isEmpty && !store.processes.isEmpty {
                     ContentUnavailableView.search(text: store.filterText)

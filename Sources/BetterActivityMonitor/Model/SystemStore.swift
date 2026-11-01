@@ -1,9 +1,10 @@
 import AppKit
+import SwiftUI
 import Observation
 import SystemKit
 
 enum AppSection: String, CaseIterable, Identifiable {
-    case overview, processes, cpu, memory, disks, network, sensors, battery
+    case overview, processes, cpu, memory, disks, network, sensors, battery, energy
     var id: String { rawValue }
 
     var title: String {
@@ -16,7 +17,13 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .network: "Network"
         case .sensors: "GPU & Sensors"
         case .battery: "Battery"
+        case .energy: "Energy"
         }
+    }
+
+    /// ⌘1…⌘9, then ⌘0 for the tenth section. A two-digit `Character` would trap.
+    static func shortcut(index: Int) -> KeyEquivalent {
+        KeyEquivalent(Character(String((index + 1) % 10)))
     }
 
     var symbol: String {
@@ -29,7 +36,27 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .network: "network"
         case .sensors: "thermometer.medium"
         case .battery: "battery.75percent"
+        case .energy: "bolt.fill"
         }
+    }
+}
+
+/// Parts of the app that need `nettop` data.
+enum ConnectionConsumer: Hashable {
+    case networkPage, processTable
+}
+
+/// Combines what each consumer asks for into one connection mode.
+struct ConnectionDemand {
+    private(set) var modes: [ConnectionConsumer: ConnectionMode] = [:]
+
+    var effective: ConnectionMode { modes.values.max() ?? .off }
+
+    /// Returns whether the effective mode changed.
+    mutating func set(_ mode: ConnectionMode, for consumer: ConnectionConsumer) -> Bool {
+        let before = effective
+        modes[consumer] = mode == .off ? nil : mode
+        return effective != before
     }
 }
 
@@ -71,6 +98,8 @@ final class SystemStore {
     private(set) var cpuTemperature = History(capacity: 120)
     private(set) var batteryCharge = History(capacity: 120)
     private(set) var batteryPower = History(capacity: 120)
+    /// Sum of per-process power, which works on desktops too (no battery telemetry there).
+    private(set) var processPower = History(capacity: 120)
     private(set) var sensorMax: [String: Double] = [:]
     private(set) var processCPU: [pid_t: History] = [:]
     private(set) var processMemory: [pid_t: History] = [:]
@@ -99,7 +128,10 @@ final class SystemStore {
     var controlError: ControlError?
 
     @ObservationIgnored private let monitor = SystemMonitor()
+    @ObservationIgnored private var connectionDemand = ConnectionDemand()
     @ObservationIgnored private var loop: Task<Void, Never>?
+    @ObservationIgnored private var tickSleep: Task<Void, Error>?
+    @ObservationIgnored private var intervalObserver: NSKeyValueObservation?
     @ObservationIgnored private var iconCache: [String: NSImage] = [:]
     /// Querying runningApplications is costly (KVO setup), so only refresh on launch/quit.
     @ObservationIgnored private var appsDirty = true
@@ -127,8 +159,13 @@ final class SystemStore {
 
     func start() {
         guard loop == nil else { return }
+        // A new interval takes effect at once instead of after the current (possibly 10 s) wait.
+        intervalObserver = UserDefaults.standard.observe(\.refreshInterval) { [weak self] _, _ in
+            Task { @MainActor in self?.tickSleep?.cancel() }
+        }
         loop = Task { [weak self] in
             while !Task.isCancelled {
+                let started = ContinuousClock.now
                 guard let monitor = self?.monitor else { return }
                 let snapshot = await monitor.sample()
                 // During a live resize only layout should run on the main thread; resume afterwards.
@@ -137,8 +174,23 @@ final class SystemStore {
                     continue
                 }
                 self?.apply(snapshot)
-                try? await Task.sleep(for: .seconds(Defaults.refreshInterval))
+                // Fixed cadence: the time spent sampling counts toward the interval.
+                await self?.sleepUntilNextTick(after: started)
             }
+        }
+    }
+
+    /// Sleeps until `started + interval`. An interval change cancels the sleep, and the deadline is
+    /// recomputed with the new value (sampling right away if it has already passed).
+    private func sleepUntilNextTick(after started: ContinuousClock.Instant) async {
+        while !Task.isCancelled {
+            let deadline = started.advanced(by: .seconds(Defaults.refreshInterval))
+            guard ContinuousClock.now < deadline else { return }
+            let sleep = Task { try await Task.sleep(until: deadline, clock: .continuous) }
+            tickSleep = sleep
+            let finished = (try? await sleep.value) != nil
+            tickSleep = nil
+            if finished { return }
         }
     }
 
@@ -148,10 +200,34 @@ final class SystemStore {
         Task { await monitor.setDetailedSensors(on) }
     }
 
-    /// Connection data spawns `nettop` every tick, so views turn it on only while they are visible.
-    func setConnectionMode(_ mode: ConnectionMode) {
+    /// Connection data spawns `nettop` every tick, so each consumer asks for it only while it needs it;
+    /// the monitor runs the costliest mode any of them asks for.
+    func requestConnections(_ mode: ConnectionMode, for consumer: ConnectionConsumer) {
+        guard connectionDemand.set(mode, for: consumer) else { return }
+        let effective = connectionDemand.effective
         let monitor = monitor
-        Task { await monitor.setConnectionMode(mode) }
+        Task { await monitor.setConnectionMode(effective) }
+    }
+
+    func releaseConnections(for consumer: ConnectionConsumer) { requestConnections(.off, for: consumer) }
+
+    /// Number of process tables on screen; the Overview and Processes pages each show one.
+    @ObservationIgnored private var visibleProcessTables = 0
+
+    func processTableAppeared() {
+        visibleProcessTables += 1
+        processTableColumnsChanged()
+    }
+
+    func processTableDisappeared() {
+        visibleProcessTables = max(visibleProcessTables - 1, 0)
+        processTableColumnsChanged()
+    }
+
+    /// Per-process network columns need `nettop -P`, but only while a table shows one of them.
+    func processTableColumnsChanged() {
+        let needed = visibleProcessTables > 0 && ProcessTableController.showsNetworkColumns
+        requestConnections(needed ? .processes : .off, for: .processTable)
     }
 
     func clearConnectionLog() { connectionLog = [] }
@@ -166,8 +242,7 @@ final class SystemStore {
     func icon(for row: ProcessRow) -> NSImage? {
         if let icon = apps[row.pid]?.icon { return icon }
         // Helpers inside an app bundle get the bundle's icon.
-        guard let range = row.path.range(of: ".app/") else { return nil }
-        let bundle = String(row.path[..<range.lowerBound]) + ".app"
+        guard let bundle = AppBundle.path(forExecutable: row.path) else { return nil }
         if let cached = iconCache[bundle] { return cached }
         let icon = Self.rasterize(NSWorkspace.shared.icon(forFile: bundle))
         iconCache[bundle] = icon
@@ -217,6 +292,7 @@ final class SystemStore {
             }
             push(&diskRead, s.disks.readRate)
             push(&diskWrite, s.disks.writeRate)
+            push(&processPower, s.processes.reduce(0) { $0 + $1.power })
             #if WIDGETS
             WidgetFeed.record(s, cpuHistory: cpuTotal, gpuHistory: gpu)
             #endif
@@ -294,7 +370,11 @@ final class SystemStore {
     func rows(scope: ProcessScope, sort: [KeyPathComparator<ProcessRow>], tree: Bool, regex: Bool) -> [ProcessRow] {
         let total = snapshot?.memory.total ?? 0
         let divisor = UserDefaults.standard.bool(forKey: SettingsKey.cpuPerCore) ? 1 : Double(coreCount)
-        let all = processes.map { ProcessRow.build(from: $0, app: apps[$0.pid], totalMemory: total, cpuDivisor: divisor) }
+        let assertions = snapshot?.powerAssertions ?? [:]
+        let all = processes.map {
+            ProcessRow.build(from: $0, app: apps[$0.pid], totalMemory: total, cpuDivisor: divisor,
+                             preventsSleep: assertions[$0.pid]?.contains(where: \.preventsSleep) ?? false)
+        }
         let query = filterText.trimmingCharacters(in: .whitespaces)
         let compiled = regex && !query.isEmpty ? try? Regex(query).ignoresCase() : nil
         let uid = myUID
@@ -313,6 +393,19 @@ final class SystemStore {
     }
 
     func displayName(_ entry: ProcessEntry) -> String { apps[entry.pid]?.name ?? entry.name }
+
+    /// What the whole Mac draws right now: battery telemetry when there is one, else the sum over processes.
+    var systemPower: Double? { snapshot.map(systemPower(of:)) }
+
+    func systemPower(of s: SystemSnapshot) -> Double {
+        if let load = s.battery?.systemLoad, load > 0 { return load }
+        if let w = s.battery?.watts, !(s.battery?.isPluggedIn ?? true) { return abs(w) }
+        return s.processes.reduce(0) { $0 + $1.power }
+    }
+
+    func energyGroups(sort: EnergySort) -> [EnergyGroup] {
+        EnergyRows.sorted(EnergyRows.groups(snapshot?.processes ?? [], apps: apps, displayName: displayName), by: sort)
+    }
 
     func reveal(_ pid: pid_t) {
         section = .processes
@@ -380,10 +473,6 @@ final class SystemStore {
     }
 
     func adjustRefresh(faster: Bool) {
-        let steps: [Double] = [0.25, 0.5, 1, 2, 3, 5, 10]
-        let current = Defaults.refreshInterval
-        let index = steps.firstIndex { $0 >= current } ?? 2
-        let next = steps[max(0, min(steps.count - 1, index + (faster ? -1 : 1)))]
-        UserDefaults.standard.set(next, forKey: SettingsKey.refreshInterval)
+        RefreshInterval.set(RefreshInterval.step(RefreshInterval.milliseconds, faster: faster))
     }
 }

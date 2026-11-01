@@ -39,6 +39,13 @@ struct ProcessRow: Identifiable, Hashable {
     var diskReadTotal: UInt64
     var diskWriteTotal: UInt64
     var wakeups: Double
+    var netRateIn: Double = 0
+    var netRateOut: Double = 0
+    var netTotalIn: UInt64 = 0
+    var netTotalOut: UInt64 = 0
+    var power: Double = 0
+    var energyTotal: Double = 0
+    var preventsSleep = false
     var isApp: Bool
     var depth = 0
     var hasChildren = false
@@ -46,8 +53,12 @@ struct ProcessRow: Identifiable, Hashable {
     /// In tree mode a collapsed parent shows the sum of its subtree, like btop.
     var subtreeCPU: Double = 0
     var subtreeMemory: UInt64 = 0
+    var subtreeNetIn: Double = 0
+    var subtreeNetOut: Double = 0
+    var subtreePower: Double = 0
 
-    static func build(from entry: ProcessEntry, app: AppInfo?, totalMemory: UInt64, cpuDivisor: Double) -> ProcessRow {
+    static func build(from entry: ProcessEntry, app: AppInfo?, totalMemory: UInt64, cpuDivisor: Double,
+                      preventsSleep: Bool = false) -> ProcessRow {
         ProcessRow(
             pid: entry.pid, ppid: entry.ppid, name: app?.name ?? entry.name, user: entry.user, uid: entry.uid,
             path: entry.path, state: entry.state, nice: entry.nice, startTime: entry.startTime,
@@ -57,9 +68,18 @@ struct ProcessRow: Identifiable, Hashable {
             resident: entry.resident, threads: entry.threads,
             diskReadRate: entry.diskReadRate, diskWriteRate: entry.diskWriteRate,
             diskReadTotal: entry.diskReadTotal, diskWriteTotal: entry.diskWriteTotal,
-            wakeups: entry.idleWakeupsPerSecond, isApp: app?.isRegular ?? false
+            wakeups: entry.idleWakeupsPerSecond,
+            netRateIn: entry.netRateIn, netRateOut: entry.netRateOut,
+            netTotalIn: entry.netTotalIn, netTotalOut: entry.netTotalOut,
+            power: entry.power, energyTotal: entry.energyTotal, preventsSleep: preventsSleep,
+            isApp: app?.isRegular ?? false
         )
     }
+}
+
+extension ProcessRow {
+    /// Bool isn't Comparable; sorting needs a number.
+    var preventsSleepRank: Int { preventsSleep ? 1 : 0 }
 }
 
 struct AppInfo {
@@ -109,10 +129,11 @@ enum ProcessRowBuilder {
             }
         }
 
-        func totals(_ row: ProcessRow) -> (Double, UInt64) {
-            (children[row.pid] ?? []).reduce((row.cpu, row.memory)) { acc, child in
+        typealias Totals = (cpu: Double, memory: UInt64, netIn: Double, netOut: Double, power: Double)
+        func totals(_ row: ProcessRow) -> Totals {
+            (children[row.pid] ?? []).reduce((row.cpu, row.memory, row.netRateIn, row.netRateOut, row.power)) { acc, child in
                 let t = totals(child)
-                return (acc.0 + t.0, acc.1 + t.1)
+                return (acc.cpu + t.cpu, acc.memory + t.memory, acc.netIn + t.netIn, acc.netOut + t.netOut, acc.power + t.power)
             }
         }
 
@@ -123,7 +144,11 @@ enum ProcessRowBuilder {
                 row.depth = depth
                 row.hasChildren = kids.contains { visible.contains($0.pid) }
                 row.isCollapsed = collapsed.contains(row.pid)
-                if row.isCollapsed { (row.subtreeCPU, row.subtreeMemory) = totals(row) }
+                if row.isCollapsed {
+                    let t = totals(row)
+                    (row.subtreeCPU, row.subtreeMemory, row.subtreeNetIn, row.subtreeNetOut, row.subtreePower)
+                        = (t.cpu, t.memory, t.netIn, t.netOut, t.power)
+                }
                 result.append(row)
                 if row.hasChildren && !row.isCollapsed { walk(kids, depth: depth + 1) }
             }

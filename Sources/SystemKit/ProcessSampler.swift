@@ -8,7 +8,12 @@ final class ProcessSampler {
         var diskRead: UInt64
         var diskWrite: UInt64
         var wakeups: UInt64
+        var energyNJ: UInt64
     }
+
+    /// v6 adds `ri_energy_nj`. It extends v4 field for field, so a v4 answer fills the same struct
+    /// (energy then stays 0). Starts at v6 and drops to v4 for good if the kernel refuses it.
+    private var rusageFlavor = Int32(RUSAGE_INFO_V6)
 
     private var previous: [pid_t: Previous] = [:]
     private var previousTime: Date?
@@ -18,6 +23,12 @@ final class ProcessSampler {
     private var denied: [pid_t: Date] = [:]
 
     private(set) var totalThreads = 0
+
+    private static func rusage(_ pid: pid_t, flavor: Int32, into usage: inout rusage_info_v6) -> Bool {
+        withUnsafeMutablePointer(to: &usage) { ptr in
+            ptr.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(pid, flavor, $0) == 0 }
+        }
+    }
 
     func sample() -> [ProcessEntry] {
         let now = Date()
@@ -58,11 +69,11 @@ final class ProcessSampler {
                 continue
             }
 
-            var usage = rusage_info_v4()
-            let usageOK = withUnsafeMutablePointer(to: &usage) { ptr in
-                ptr.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) {
-                    proc_pid_rusage(pid, RUSAGE_INFO_V4, $0) == 0
-                }
+            var usage = rusage_info_v6()
+            var usageOK = Self.rusage(pid, flavor: rusageFlavor, into: &usage)
+            if !usageOK, rusageFlavor == RUSAGE_INFO_V6, errno == EINVAL {
+                rusageFlavor = Int32(RUSAGE_INFO_V4)
+                usageOK = Self.rusage(pid, flavor: rusageFlavor, into: &usage)
             }
             if usageOK {
                 entry.hasTaskInfo = true
@@ -73,17 +84,21 @@ final class ProcessSampler {
                 entry.diskReadTotal = usage.ri_diskio_bytesread
                 entry.diskWriteTotal = usage.ri_diskio_byteswritten
                 let wakeups = usage.ri_pkg_idle_wkups + usage.ri_interrupt_wkups
+                entry.energyTotal = Double(usage.ri_energy_nj) / 1e9
 
                 if let dt, let prev = previous[pid], prev.startTime == start {
                     entry.cpu = Double(cpuNanos &- prev.cpuNanos) / (dt * 1e9) * 100
                     entry.diskReadRate = Double(entry.diskReadTotal &- prev.diskRead) / dt
                     entry.diskWriteRate = Double(entry.diskWriteTotal &- prev.diskWrite) / dt
                     entry.idleWakeupsPerSecond = Double(wakeups &- prev.wakeups) / dt
+                    if usage.ri_energy_nj >= prev.energyNJ {
+                        entry.power = Double(usage.ri_energy_nj - prev.energyNJ) / (dt * 1e9)
+                    }
                     if entry.cpu < 0 || entry.cpu > 100_000 { entry.cpu = 0 }
                 }
                 next[pid] = Previous(startTime: start, cpuNanos: cpuNanos,
                                      diskRead: entry.diskReadTotal, diskWrite: entry.diskWriteTotal,
-                                     wakeups: wakeups)
+                                     wakeups: wakeups, energyNJ: usage.ri_energy_nj)
             }
 
             var task = proc_taskinfo()

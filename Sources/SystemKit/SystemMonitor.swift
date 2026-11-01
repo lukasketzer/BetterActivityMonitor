@@ -11,6 +11,7 @@ public actor SystemMonitor {
     private let battery = BatterySampler()
     private let sensors = TemperatureSampler()
     private let connections = ConnectionSampler()
+    private let assertions = PowerAssertionSampler()
     private var lastSample: Date?
     private var tick = 0
     /// Wall-clock milliseconds each sampler took in the last `sample()`; used by the benchmark.
@@ -38,8 +39,10 @@ public actor SystemMonitor {
             return value
         }
 
-        let procs = timed("processes") { processes.sample() }
+        var procs = timed("processes") { processes.sample() }
         let temps = timed("sensors") { sensors.sample() }
+        let net = timed("connections") { connections.sample(now: now) }
+        if let net { Self.attach(net.processes, to: &procs) }
         let snapshot = SystemSnapshot(
             timestamp: now,
             interval: interval,
@@ -52,9 +55,23 @@ public actor SystemMonitor {
             sensors: temps.sensors,
             fans: temps.fans,
             processes: procs,
-            connections: timed("connections") { connections.sample(now: now) }
+            connections: net,
+            powerAssertions: timed("assertions") { assertions.sample(now: now) }
         )
         lastTimings = timings.map { (name: $0.0, ms: $0.1) }
         return snapshot
+    }
+
+    /// Copies nettop's per-process counters onto the matching process entries.
+    static func attach(_ usage: [ProcessNetUsage], to processes: inout [ProcessEntry]) {
+        guard !usage.isEmpty else { return }
+        let byPID = Dictionary(usage.map { ($0.pid, $0) }, uniquingKeysWith: { a, _ in a })
+        for i in processes.indices {
+            guard let u = byPID[processes[i].pid] else { continue }
+            processes[i].netRateIn = u.rateIn
+            processes[i].netRateOut = u.rateOut
+            processes[i].netTotalIn = u.bytesIn
+            processes[i].netTotalOut = u.bytesOut
+        }
     }
 }
