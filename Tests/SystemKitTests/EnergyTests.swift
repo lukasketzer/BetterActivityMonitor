@@ -7,6 +7,12 @@ import XCTest
 final class EnergyTests: XCTestCase {
     /// A busy second on one core must show up as watts on this process.
     func testBusyProcessReportsPower() throws {
+        // Virtual Macs (like GitHub's macOS runners) have no energy counters: ri_energy_nj stays 0.
+        var vm: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        if sysctlbyname("kern.hv_vmm_present", &vm, &size, nil, 0) == 0, vm == 1 {
+            throw XCTSkip("no per-process energy counters in a virtual machine")
+        }
         let sampler = ProcessSampler()
         _ = sampler.sample()
         let start = Date()
