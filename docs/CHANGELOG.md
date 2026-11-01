@@ -6,6 +6,8 @@ tagged version into the GitHub Release notes; nightly builds show the `Unrelease
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-01
+
 ### Added
 
 - Desktop and Notification Center widgets: System Overview, System Stats, System Rings, History Graph and
