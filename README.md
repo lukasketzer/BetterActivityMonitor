@@ -18,6 +18,7 @@ plus a fast process list that lets you find, inspect and stop any app.
 [**Download**](https://github.com/lukasketzer/BetterActivityMonitor/releases/latest) ·
 [Features](#features) ·
 [Build from source](#build-from-source) ·
+[Permissions](#permissions) ·
 [Contributing](docs/CONTRIBUTING.md)
 
 <br>
@@ -95,13 +96,26 @@ without the widgets.
 
 More on the build, tests and tooling in [CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
-## Permissions and limitations
+## Permissions
 
-- Without root, the kernel refuses per-process CPU and memory figures for other users' processes. These show "—".
-  Signals and renice on such processes ask for an administrator password.
-- Temperatures and fans come from the SMC (`AppleSMC`). The keys vary by Mac model, so some sensors may be
-  missing on yours. Please [report it](https://github.com/lukasketzer/BetterActivityMonitor/issues/new).
-- Connection data comes from the system's `nettop` tool, which runs only while a Network page that needs it is open.
+BetterActivityMonitor asks for nothing at launch. It doesn't need Accessibility, Screen Recording or Full Disk
+Access, and it has no account, analytics or update check. This is everything it can ask macOS for, and when:
+
+| What | When you see it | Why |
+|---|---|---|
+| Administrator password | Only when you quit, pause or renice another user's (or a system) process | The kernel only lets you signal or reprioritize your own processes. For anyone else's, the app shows the standard macOS password prompt and runs that one `kill` or `renice` as administrator. The password goes to macOS, not to the app. |
+| Apple events | Once, before the first password prompt | The password prompt is shown through AppleScript (`do shell script … with administrator privileges`), so macOS may ask whether the app may send Apple events. It's the app's only privacy permission (`NSAppleEventsUsageDescription`). Change it in *System Settings → Privacy & Security → Automation*. |
+
+These need no permission at all:
+
+- **Other users' processes.** Without root, the kernel refuses per-process CPU and memory figures for processes
+  that aren't yours. These show "—". The app doesn't ask to run as root to fill them in.
+- **Temperatures and fans** are read from the SMC (`AppleSMC`), read-only. The keys vary by Mac model, so some
+  sensors may be missing on yours. Please [report it](https://github.com/lukasketzer/BetterActivityMonitor/issues/new).
+- **Network connections** come from the system's `nettop` tool, which works without root. It runs only while a
+  Network page or network column that needs it is open.
+- **Desktop widgets** run sandboxed. They share one day of history with the app through an App Group container on
+  your Mac, so their graphs keep going after you quit the app.
 
 ## Roadmap
 
