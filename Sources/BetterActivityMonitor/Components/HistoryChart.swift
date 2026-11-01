@@ -21,6 +21,7 @@ struct HistoryChart: View {
 
     @AppStorage(SettingsKey.graphStyle) private var style: GraphStyle = .area
     @State private var hoverX: CGFloat?
+    @State private var anchor = TooltipAnchor()
 
     private let axisWidth: CGFloat = 58
 
@@ -28,25 +29,27 @@ struct HistoryChart: View {
         GeometryReader { geo in
             let plot = CGSize(width: max(geo.size.width - (showsYAxis ? axisWidth : 0), 10), height: geo.size.height)
             let model = Model(series: series, stacked: stacked, maxY: maxY)
-            ZStack(alignment: .topLeading) {
-                Canvas { context, _ in draw(model, in: &context, plot: plot) }
-                if let hoverX, let index = model.index(atX: hoverX, width: plot.width) {
-                    tooltip(model, index: index)
-                        .fixedSize()
-                        .alignmentGuide(.leading) { d in
-                            let x = model.x(index, width: plot.width)
-                            return -(x + 10 + d.width > plot.width ? x - d.width - 10 : x + 10)
-                        }
-                        .allowsHitTesting(false)
+            let info = hoverX.flatMap { model.index(atX: $0, width: plot.width) }
+                .map { tooltipInfo(model, index: $0, plotWidth: plot.width) }
+            // The tooltip floats in its own window above the whole container (see FloatingTooltip),
+            // so it is never clipped by the card and never affects the chart's layout.
+            Canvas { context, _ in draw(model, in: &context, plot: plot) }
+                .background(TooltipAnchorView(anchor: anchor))
+                .contentShape(Rectangle())
+                .onContinuousHover { phase in
+                    switch phase {
+                    case .active(let p): hoverX = p.x <= plot.width ? p.x : nil
+                    case .ended: hoverX = nil
+                    }
                 }
-            }
-            .contentShape(Rectangle())
-            .onContinuousHover { phase in
-                switch phase {
-                case .active(let p): hoverX = p.x <= plot.width ? p.x : nil
-                case .ended: hoverX = nil
+                .onChange(of: info, initial: true) { _, info in
+                    if let info {
+                        FloatingTooltip.shared.show(ChartTooltip(info: info), atX: info.x, from: anchor)
+                    } else {
+                        FloatingTooltip.shared.hide(from: anchor)
+                    }
                 }
-            }
+                .onDisappear { FloatingTooltip.shared.hide(from: anchor) }
         }
     }
 
@@ -168,18 +171,39 @@ struct HistoryChart: View {
         }
     }
 
-    private func tooltip(_ m: Model, index: Int) -> some View {
+    private func tooltipInfo(_ m: Model, index: Int, plotWidth: CGFloat) -> ChartTooltip.Info {
+        ChartTooltip.Info(
+            x: m.x(index, width: plotWidth),
+            date: m.series.first?.history.points[safe: index]?.date,
+            rows: m.series.map { s in
+                .init(name: s.name, color: s.color, value: s.history.points[safe: index].map { format($0.value) } ?? "—")
+            })
+    }
+}
+
+/// Content of a HistoryChart hover tooltip; shown through `FloatingTooltip`.
+struct ChartTooltip: View {
+    struct Info: Equatable {
+        struct Row: Equatable { var name: String; var color: Color; var value: String }
+        var x: CGFloat
+        var date: Date?
+        var rows: [Row]
+    }
+
+    var info: Info
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            if let date = m.series.first?.history.points[safe: index]?.date {
+            if let date = info.date {
                 Text(date, format: .dateTime.hour().minute().second())
                     .font(.caption2).foregroundStyle(.secondary)
             }
-            ForEach(m.series) { s in
+            ForEach(info.rows, id: \.name) { row in
                 HStack(spacing: 5) {
-                    Circle().fill(s.color).frame(width: 7, height: 7)
-                    Text(s.name).foregroundStyle(.secondary)
+                    Circle().fill(row.color).frame(width: 7, height: 7)
+                    Text(row.name).foregroundStyle(.secondary)
                     Spacer(minLength: 8)
-                    Text(s.history.points[safe: index].map { format($0.value) } ?? "—").monospacedDigit()
+                    Text(row.value).monospacedDigit()
                 }
                 .font(.caption)
             }
