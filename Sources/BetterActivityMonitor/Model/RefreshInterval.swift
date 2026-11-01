@@ -3,28 +3,23 @@ import Foundation
 /// The update interval in milliseconds, like btop's `- 1000ms +`. Stored in seconds under
 /// `SettingsKey.refreshInterval`, as before.
 enum RefreshInterval {
-    static let range = 100...10_000
+    /// The choices offered in the View menu and in Settings.
+    static let presets = [500, 1_000, 2_000, 5_000, 10_000, 30_000, 60_000]
+    static let range = presets.first!...presets.last!
 
     static func clamped(_ ms: Int) -> Int { min(max(ms, range.lowerBound), range.upperBound) }
 
-    /// One click of − / +: 100 ms steps below a second, 500 ms steps above, landing on that grid.
-    static func step(_ ms: Int, faster: Bool) -> Int {
-        let next: Int
-        if faster {
-            next = ms > 1000 ? max((ms - 1) / 500 * 500, 1000) : (ms - 1) / 100 * 100
-        } else {
-            next = ms >= 1000 ? ms / 500 * 500 + 500 : ms / 100 * 100 + 100
-        }
-        return clamped(next)
+    /// The preset closest to `ms`, so an old stored value still shows a selection.
+    static func nearestPreset(_ ms: Int) -> Int { presets.min { abs($0 - ms) < abs($1 - ms) }! }
+
+    static func label(_ ms: Int) -> String {
+        ms < 1000 ? "\(ms) ms" : ms < 60_000 ? "\(ms / 1000) s" : "\(ms / 60_000) min"
     }
 
-    /// Parses what the user typed: "250", "250 ms", "1.5s", "2 s". Nil if it isn't a number.
-    static func parse(_ text: String) -> Int? {
-        let t = text.trimmingCharacters(in: .whitespaces).lowercased()
-        if t.hasSuffix("ms"), let v = Double(t.dropLast(2).trimmingCharacters(in: .whitespaces)) { return clamped(Int(v.rounded())) }
-        if t.hasSuffix("s"), let v = Double(t.dropLast().trimmingCharacters(in: .whitespaces)) { return clamped(Int((v * 1000).rounded())) }
-        if let v = Double(t) { return clamped(Int(v.rounded())) }
-        return nil
+    /// One step to the next faster or slower preset, for ⌘+ / ⌘−.
+    static func step(_ ms: Int, faster: Bool) -> Int {
+        let i = presets.firstIndex(of: nearestPreset(ms))!
+        return presets[min(max(i + (faster ? -1 : 1), 0), presets.count - 1)]
     }
 
     static var milliseconds: Int { Int((Defaults.refreshInterval * 1000).rounded()) }

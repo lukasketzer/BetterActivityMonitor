@@ -57,6 +57,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct AppCommands: Commands {
     @Bindable var store: SystemStore
     @AppStorage(SettingsKey.treeView) private var tree = false
+    @AppStorage(SettingsKey.refreshInterval) private var interval = 1.0
+
+    private var milliseconds: Binding<Int> {
+        Binding { RefreshInterval.nearestPreset(Int((interval * 1000).rounded())) } set: { RefreshInterval.set($0) }
+    }
 
     var body: some Commands {
         CommandGroup(after: .sidebar) {
@@ -66,6 +71,10 @@ struct AppCommands: Commands {
                     .keyboardShortcut(AppSection.shortcut(index: index), modifiers: .command)
             }
             Divider()
+            Picker("Update Interval", selection: milliseconds) {
+                ForEach(RefreshInterval.presets, id: \.self) { Text(RefreshInterval.label($0)).tag($0) }
+            }
+            .pickerStyle(.menu)
             Button("Faster Updates") { store.adjustRefresh(faster: true) }
                 .keyboardShortcut("+", modifiers: .command)
             Button("Slower Updates") { store.adjustRefresh(faster: false) }

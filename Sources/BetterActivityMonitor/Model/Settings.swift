@@ -89,7 +89,7 @@ enum Defaults {
     }
 
     static var refreshInterval: Double {
-        min(max(UserDefaults.standard.double(forKey: SettingsKey.refreshInterval), 0.1), 10)
+        min(max(UserDefaults.standard.double(forKey: SettingsKey.refreshInterval), 0.5), 60)
     }
 
     static var historyLength: Int {

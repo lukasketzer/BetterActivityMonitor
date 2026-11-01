@@ -16,9 +16,6 @@ struct ContentView: View {
             detail
                 .modifier(FreezeDuringLiveResize())
                 .navigationTitle(store.section?.title ?? "BetterActivityMonitor")
-                .toolbar {
-                    ToolbarItem(placement: .navigation) { RefreshIntervalControl() }
-                }
         }
         // Showing the sidebar pushes the detail aside instead of floating over it.
         .navigationSplitViewStyle(.balanced)

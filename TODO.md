@@ -1,4 +1,9 @@
-- home scree widgets
+- home scree widgets (DONE)
 - better settings
-- better network tab (nettop etc)
-- 
+- better network tab (nettop etc) (DONE)
+- Release Stuff / Dev ops (IN_PROGRESS) 
+- Homepage
+- Homebrew installation 
+- History on each panel (1h, 6h, 24h, 7d, 30d) (IN_PROGRESS, on branch)
+    - also record in the background
+    - the whole history stuff is optional, as it needs a background runner (turn on or off in settings) 
