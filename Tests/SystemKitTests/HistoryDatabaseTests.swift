@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import SystemKit
 
-final class HistoryStoreTests: XCTestCase {
+final class HistoryDatabaseTests: XCTestCase {
     private let t0 = 1_800_000_000 / 60 * 60
 
     private func minute(_ i: Int, cpu: Double = 0.5, gpu: Double? = nil, temp: Double? = nil) -> SystemMinute {
@@ -14,7 +14,7 @@ final class HistoryStoreTests: XCTestCase {
     private func date(_ i: Int) -> Date { Date(timeIntervalSince1970: TimeInterval(t0 + i * 60)) }
 
     func testSeriesReturnsMinutesAndSkipsNulls() async {
-        let store = HistoryStore(url: nil)
+        let store = HistoryDatabase(url: nil)
         for i in 0..<5 { await store.append(minute(i, cpu: Double(i) / 10, gpu: i == 2 ? 0.3 : nil), processes: []) }
         let cpu = await store.series(.cpu, from: date(0), to: date(5))
         XCTAssertEqual(cpu.map(\.value), [0, 0.1, 0.2, 0.3, 0.4])
@@ -24,7 +24,7 @@ final class HistoryStoreTests: XCTestCase {
     }
 
     func testBucketsAverageButKeepPeaks() async {
-        let store = HistoryStore(url: nil)
+        let store = HistoryDatabase(url: nil)
         for i in 0..<10 { await store.append(minute(i, cpu: i < 5 ? 0.2 : 0.6, temp: Double(50 + i)), processes: []) }
         let cpu = await store.series(.cpu, from: date(0), to: date(10), bucket: 300)
         XCTAssertEqual(cpu.count, 2)
@@ -35,7 +35,7 @@ final class HistoryStoreTests: XCTestCase {
     }
 
     func testRewritingAMinuteReplacesIt() async {
-        let store = HistoryStore(url: nil)
+        let store = HistoryDatabase(url: nil)
         let p = ProcessMinute(ts: t0, pid: 1, name: "a", bundle: nil, cpu: 1, memory: 1, disk: 0, net: nil, power: 0)
         await store.append(minute(0, cpu: 0.1), processes: [p, p])
         await store.append(minute(0, cpu: 0.9), processes: [p])
@@ -48,7 +48,7 @@ final class HistoryStoreTests: XCTestCase {
     }
 
     func testTopProcessesSumHelpersUnderTheirApp() async throws {
-        let store = HistoryStore(url: nil)
+        let store = HistoryDatabase(url: nil)
         let chrome = "/Applications/Google Chrome.app"
         for i in 0..<4 {
             await store.append(minute(i), processes: [
@@ -76,7 +76,7 @@ final class HistoryStoreTests: XCTestCase {
     }
 
     func testPruneDropsOldMinutes() async {
-        let store = HistoryStore(url: nil)
+        let store = HistoryDatabase(url: nil)
         for i in 0..<10 {
             await store.append(minute(i), processes: [ProcessMinute(ts: t0 + i * 60, pid: 1, name: "a", bundle: nil,
                                                                     cpu: 1, memory: 1, disk: 0, net: nil, power: 0)])
@@ -97,7 +97,7 @@ final class HistoryStoreTests: XCTestCase {
     func testThirtyDaysFitOnDisk() async throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let store = HistoryStore(url: dir.appendingPathComponent("history.sqlite"))
+        let store = HistoryDatabase(url: dir.appendingPathComponent("history.sqlite"))
         let days = 30
         for i in 0..<(days * 1440) {
             let processes = (0..<15).map { (k: Int) -> ProcessMinute in

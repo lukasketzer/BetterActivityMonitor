@@ -1,4 +1,6 @@
+import ServiceManagement
 import SwiftUI
+import SystemKit
 
 struct SettingsView: View {
     var body: some View {
@@ -6,7 +8,7 @@ struct SettingsView: View {
             GeneralSettings().tabItem { Label("General", systemImage: "gearshape") }
             AppearanceSettings().tabItem { Label("Appearance", systemImage: "paintpalette") }
             ProcessSettings().tabItem { Label("Processes", systemImage: "list.bullet.rectangle") }
-            HistorySettings().tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
+            HistorySettingsTab().tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
             MenuBarSettings().tabItem { Label("Menu Bar", systemImage: "menubar.rectangle") }
         }
         .frame(width: 520)
@@ -57,32 +59,59 @@ private struct GeneralSettings: View {
     }
 }
 
-private struct HistorySettings: View {
+private struct HistorySettingsTab: View {
     @Environment(SystemStore.self) private var store
-    @AppStorage(SettingsKey.historyEnabled) private var enabled = true
-    @AppStorage(SettingsKey.historyRetentionDays) private var days = 7
+    @AppStorage(SettingsKey.historyEnabled) private var enabled = false
+    @AppStorage(SettingsKey.historyRetentionDays) private var days = HistorySettings.defaultRetention
     @State private var size: Int?
+    @State private var status: SMAppService.Status = .notRegistered
+    @State private var error: String?
     @State private var confirmClear = false
 
     var body: some View {
         Form {
-            Toggle("Record history", isOn: $enabled)
-            Text("Saves a summary of every minute the app runs: CPU, memory, GPU, network, disk, power and the busiest processes. It stays on this Mac.")
-                .font(.caption).foregroundStyle(.secondary)
-            Picker("Keep", selection: $days) {
-                Text("1 day").tag(1)
-                Text("7 days").tag(7)
-                Text("30 days").tag(30)
+            Section {
+                Toggle("Record history in the background", isOn: $enabled)
+                    .disabled(!store.historyAgent.isAvailable)
+                Text("A small background agent saves a summary of every minute (CPU, memory, GPU, network, disk, power and the busiest apps), also while BetterActivityMonitor is closed. It stays on this Mac and uses about as much CPU as a clock. The resource pages then get a Live / 1h / 24h / 7d / 30d switch.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if enabled || status != .notRegistered {
+                    LabeledContent("Status", value: HistoryAgentService.describe(status))
+                }
+                if status == .requiresApproval {
+                    Button("Open Login Items Settings…") { store.historyAgent.openLoginItemsSettings() }
+                }
+                if let error {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
             }
-            .disabled(!enabled)
-            LabeledContent("Size on disk", value: size.map { Fmt.bytes(UInt64($0)) } ?? "—")
-            Button("Clear History…", role: .destructive) { confirmClear = true }
+            Section {
+                Picker("Keep", selection: $days) {
+                    Text("1 day").tag(1)
+                    Text("7 days").tag(7)
+                    Text("30 days").tag(30)
+                }
+                LabeledContent("Size on disk", value: size.map { Fmt.bytes(UInt64($0)) } ?? "—")
+                Button("Clear History…", role: .destructive) { confirmClear = true }
+            }
         }
         .formStyle(.grouped)
+        .onAppear { refresh() }
+        .onChange(of: enabled) {
+            error = store.historyAgent.sync(enabled: enabled)
+            refresh()
+        }
         .task(id: days) {
-            // Apply a shorter retention right away instead of at the next hourly prune.
+            // Apply a shorter retention right away instead of at the agent's next hourly prune.
             await store.history.prune(olderThan: Date().addingTimeInterval(-Double(days) * 86_400))
             size = await store.history.size()
+        }
+        .task {
+            // Approval happens in System Settings; pick it up when the user comes back.
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(3))
+                refresh()
+            }
         }
         .confirmationDialog("Clear all recorded history?", isPresented: $confirmClear) {
             Button("Clear History", role: .destructive) {
@@ -95,6 +124,8 @@ private struct HistorySettings: View {
             Text("This can't be undone.")
         }
     }
+
+    private func refresh() { status = store.historyAgent.status }
 }
 
 private struct AppearanceSettings: View {

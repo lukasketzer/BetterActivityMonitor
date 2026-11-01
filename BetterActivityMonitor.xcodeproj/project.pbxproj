@@ -12,6 +12,9 @@
 		B0A000000000000000000103 /* BAMWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B0A000000000000000000202 /* BAMWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B0A000000000000000000104 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = B0A000000000000000000211 /* AppIcon.icon */; };
 		B0A000000000000000000105 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = B0A000000000000000000212 /* AppIcon.icns */; };
+		B0A000000000000000000106 /* SystemKit in Frameworks */ = {isa = PBXBuildFile; productRef = B0A000000000000000000603 /* SystemKit */; };
+		B0A000000000000000000107 /* BAMHistoryAgent in Embed History Agent */ = {isa = PBXBuildFile; fileRef = B0A000000000000000000203 /* BAMHistoryAgent */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		B0A000000000000000000108 /* dev.lukas.BetterActivityMonitor.HistoryAgent.plist in Embed Launch Agent */ = {isa = PBXBuildFile; fileRef = B0A000000000000000000217 /* dev.lukas.BetterActivityMonitor.HistoryAgent.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -21,6 +24,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = B0A000000000000000000402;
 			remoteInfo = BAMWidgets;
+		};
+		B0A000000000000000000703 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B0A000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B0A000000000000000000403;
+			remoteInfo = BAMHistoryAgent;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -36,6 +46,28 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B0A000000000000000000506 /* Embed History Agent */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				B0A000000000000000000107 /* BAMHistoryAgent in Embed History Agent */,
+			);
+			name = "Embed History Agent";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0A000000000000000000507 /* Embed Launch Agent */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/Library/LaunchAgents;
+			dstSubfolderSpec = 1;
+			files = (
+				B0A000000000000000000108 /* dev.lukas.BetterActivityMonitor.HistoryAgent.plist in Embed Launch Agent */,
+			);
+			name = "Embed Launch Agent";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -47,11 +79,14 @@
 		B0A000000000000000000214 /* BAMWidgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "BAMWidgets-Info.plist"; sourceTree = "<group>"; };
 		B0A000000000000000000215 /* BAMWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BAMWidgets.entitlements; sourceTree = "<group>"; };
 		B0A000000000000000000216 /* BetterActivityMonitor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BetterActivityMonitor.entitlements; sourceTree = "<group>"; };
+		B0A000000000000000000203 /* BAMHistoryAgent */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = BAMHistoryAgent; sourceTree = BUILT_PRODUCTS_DIR; };
+		B0A000000000000000000217 /* dev.lukas.BetterActivityMonitor.HistoryAgent.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = dev.lukas.BetterActivityMonitor.HistoryAgent.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B0A000000000000000000301 /* BetterActivityMonitor */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Sources/BetterActivityMonitor; sourceTree = "<group>"; };
 		B0A000000000000000000302 /* BAMWidgets */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Sources/BAMWidgets; sourceTree = "<group>"; };
+		B0A000000000000000000303 /* BAMHistoryAgent */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Sources/BAMHistoryAgent; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,6 +106,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B0A000000000000000000522 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B0A000000000000000000106 /* SystemKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -79,6 +122,7 @@
 			children = (
 				B0A000000000000000000301 /* BetterActivityMonitor */,
 				B0A000000000000000000302 /* BAMWidgets */,
+				B0A000000000000000000303 /* BAMHistoryAgent */,
 				B0A000000000000000000012 /* Resources */,
 				B0A000000000000000000011 /* Products */,
 			);
@@ -89,6 +133,7 @@
 			children = (
 				B0A000000000000000000201 /* BetterActivityMonitor.app */,
 				B0A000000000000000000202 /* BAMWidgets.appex */,
+				B0A000000000000000000203 /* BAMHistoryAgent */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -102,6 +147,7 @@
 				B0A000000000000000000214 /* BAMWidgets-Info.plist */,
 				B0A000000000000000000215 /* BAMWidgets.entitlements */,
 				B0A000000000000000000216 /* BetterActivityMonitor.entitlements */,
+				B0A000000000000000000217 /* dev.lukas.BetterActivityMonitor.HistoryAgent.plist */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -117,11 +163,14 @@
 				B0A000000000000000000502 /* Frameworks */,
 				B0A000000000000000000503 /* Resources */,
 				B0A000000000000000000505 /* Embed Foundation Extensions */,
+				B0A000000000000000000506 /* Embed History Agent */,
+				B0A000000000000000000507 /* Embed Launch Agent */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				B0A000000000000000000702 /* PBXTargetDependency */,
+				B0A000000000000000000704 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				B0A000000000000000000301 /* BetterActivityMonitor */,
@@ -157,6 +206,28 @@
 			productReference = B0A000000000000000000202 /* BAMWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		B0A000000000000000000403 /* BAMHistoryAgent */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B0A000000000000000000841 /* Build configuration list for PBXNativeTarget "BAMHistoryAgent" */;
+			buildPhases = (
+				B0A000000000000000000521 /* Sources */,
+				B0A000000000000000000522 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B0A000000000000000000303 /* BAMHistoryAgent */,
+			);
+			name = BAMHistoryAgent;
+			packageProductDependencies = (
+				B0A000000000000000000603 /* SystemKit */,
+			);
+			productName = BAMHistoryAgent;
+			productReference = B0A000000000000000000203 /* BAMHistoryAgent */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -171,6 +242,9 @@
 						CreatedOnToolsVersion = 27.0;
 					};
 					B0A000000000000000000402 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					B0A000000000000000000403 = {
 						CreatedOnToolsVersion = 27.0;
 					};
 				};
@@ -194,6 +268,7 @@
 			targets = (
 				B0A000000000000000000401 /* BetterActivityMonitor */,
 				B0A000000000000000000402 /* BAMWidgets */,
+				B0A000000000000000000403 /* BAMHistoryAgent */,
 			);
 		};
 /* End PBXProject section */
@@ -232,6 +307,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B0A000000000000000000521 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -239,6 +321,11 @@
 			isa = PBXTargetDependency;
 			target = B0A000000000000000000402 /* BAMWidgets */;
 			targetProxy = B0A000000000000000000701 /* PBXContainerItemProxy */;
+		};
+		B0A000000000000000000704 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B0A000000000000000000403 /* BAMHistoryAgent */;
+			targetProxy = B0A000000000000000000703 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -351,6 +438,29 @@
 			};
 			name = Release;
 		};
+		B0A000000000000000000842 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lukas.BetterActivityMonitor.HistoryAgent;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		B0A000000000000000000843 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ENABLE_HARDENED_RUNTIME = YES;
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lukas.BetterActivityMonitor.HistoryAgent;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -381,6 +491,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		B0A000000000000000000841 /* Build configuration list for PBXNativeTarget "BAMHistoryAgent" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B0A000000000000000000842 /* Debug */,
+				B0A000000000000000000843 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -397,6 +516,11 @@
 			productName = SystemKit;
 		};
 		B0A000000000000000000602 /* SystemKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B0A000000000000000000901 /* XCLocalSwiftPackageReference "." */;
+			productName = SystemKit;
+		};
+		B0A000000000000000000603 /* SystemKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = B0A000000000000000000901 /* XCLocalSwiftPackageReference "." */;
 			productName = SystemKit;

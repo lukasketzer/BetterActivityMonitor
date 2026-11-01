@@ -72,7 +72,6 @@ struct ContentView: View {
         case .sensors: SensorsView()
         case .battery: BatteryView()
         case .energy: EnergyView()
-        case .history: HistoryView()
         }
     }
 }
@@ -114,7 +113,6 @@ private struct Sidebar: View {
             Section("Monitor") {
                 row(.overview, value: nil)
                 row(.processes, value: store.snapshot.map { "\($0.cpu.processCount)" })
-                row(.history, value: nil)
             }
             Section("Resources") {
                 row(.cpu, value: store.snapshot.map { Fmt.percent($0.cpu.total, digits: 0) },

@@ -58,6 +58,7 @@ debug bundle.
 | `Sources/SystemKit` | Data samplers: CPU, memory, processes, disks, network, `nettop` connections, GPU, SMC sensors, battery. No UI code; usable as a library |
 | `Sources/BetterActivityMonitor` | The SwiftUI/AppKit app: `Model/` (store, settings, formatting, row building), `Views/` (one file per screen), `Components/` (cards, charts, glass, the menu bar glyph) |
 | `Sources/BAMWidgets` | The WidgetKit extension (Xcode build only). It samples with `SystemKit.QuickSample` and reads the app's recent history from `SharedHistory` |
+| `Sources/BAMHistoryAgent` | Background agent (launchd, via `SMAppService`) that writes the minute history |
 | `Sources/sysbench` | CLI that benchmarks the samplers |
 | `Tests/SystemKitTests` | Sampler sanity checks, `nettop` parsing, sampler performance budgets |
 | `Tests/AppModelTests` | The app's pure logic, via `@testable import BetterActivityMonitor` |
@@ -113,6 +114,7 @@ Run the performance tests in release mode. Debug builds are several times slower
 | `swift run -c release sysbench nettop [seconds]` | CPU cost of the Network tab's connection data: one `nettop` run per tick vs. its streaming mode, and `SystemMonitor` per tick in each `ConnectionMode` (own + nettop CPU) |
 | `scripts/measure-screens.sh [seconds] [screen …]` | App CPU % per screen with its window frontmost (`APP_ENV="K=V"` passes env to the app). Network pages as `network:connections`, `network:listening`, `network:log` (or `BAM_NETWORK_PAGE=…`); nettop's own CPU isn't included, see `sysbench nettop` |
 | `scripts/hot-frames.sh [seconds] [regex]` | `sample`s the newest running instance (`PID=` to pick one) and prints the heaviest app/UI frames |
+| `scripts/measure-agent.sh [seconds]` | Runs the background history agent against a throwaway database: its CPU %, memory and the minutes it wrote |
 | `scripts/check-layout.sh [out-dir] [sizes] [sections]` | Same layout audit by hand; PNGs + `layout-report.txt` land in `build/layout` |
 | `scripts/resize-bench.sh [screens] [frames]` | Times every window-resize frame (layout + display) per screen: median / p95 / max ms, frames over the 16.7 ms 60 fps budget. Freezing during resize is on by default; `APP_ARGS="-freezeDuringResize NO"` measures live relayout. `APP_ARGS="-overview.cpu NO"` / `APP_ENV="BAM_NO_GLASS=1"` for A/B runs |
 | `scripts/screenshots.sh [out-dir] [sections]` | Captures the README screenshots (real window with Liquid Glass and shadow) into `docs/screenshots`. `SETTLE` = seconds per screen before capture (default 90, so graphs fill), `SIZE` = window size (default 1280x820), `APP_ARGS` / `APP_ENV` for launch args and env. Needs Screen Recording permission for the terminal and the desktop Space to stay visible |

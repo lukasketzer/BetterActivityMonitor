@@ -122,9 +122,10 @@ public enum ProcessRanking: String, CaseIterable, Sendable {
     }
 }
 
-/// Minute-by-minute history on disk (SQLite from the SDK, no dependencies). Writes happen once a minute
-/// off the main thread; the file stays small enough for 30 days (see `HistoryStoreTests`).
-public actor HistoryStore {
+/// Minute-by-minute history on disk (SQLite from the SDK, no dependencies). The background agent
+/// (`BAMHistoryAgent`) writes one row a minute; the app reads. WAL mode lets both use the file at once.
+/// 30 days at 15 processes a minute is about 51 MB (see `HistoryDatabaseTests`).
+public actor HistoryDatabase {
     private var db: OpaquePointer?
     public nonisolated let url: URL?
 
@@ -134,7 +135,7 @@ public actor HistoryStore {
     }
 
     /// `url: nil` keeps the database in memory (tests).
-    public init(url: URL? = HistoryStore.defaultURL) {
+    public init(url: URL? = HistoryDatabase.defaultURL) {
         self.url = url
         if let url {
             try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -146,6 +147,8 @@ public actor HistoryStore {
             return
         }
         db = handle
+        // The agent writes while the app reads or clears; wait for the other's lock instead of failing.
+        sqlite3_busy_timeout(handle, 3000)
         // auto_vacuum only takes effect before the first table exists.
         for sql in [
             "PRAGMA auto_vacuum = INCREMENTAL",

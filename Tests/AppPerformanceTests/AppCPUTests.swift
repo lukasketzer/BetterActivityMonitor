@@ -26,7 +26,6 @@ final class AppCPUTests: XCTestCase {
     func testMemory() throws { try assertCPU(screen: "memory", below: 10) }
     func testSensors() throws { try assertCPU(screen: "sensors", below: 12) }
     func testEnergy() throws { try assertCPU(screen: "energy", below: 12) }
-    func testHistory() throws { try assertCPU(screen: "history", below: 10) }
     /// The fastest interval the toolbar allows. A launch argument overrides the stored setting
     /// (NSArgumentDomain) without changing it. Recorded rather than tight: 10 ticks a second is the user's call.
     func testOverviewAt100ms() throws { try assertCPU(screen: "overview", below: 60, args: ["-refreshInterval", "0.1"]) }

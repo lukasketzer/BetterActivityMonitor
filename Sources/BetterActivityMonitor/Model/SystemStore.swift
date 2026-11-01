@@ -4,7 +4,7 @@ import Observation
 import SystemKit
 
 enum AppSection: String, CaseIterable, Identifiable {
-    case overview, processes, cpu, memory, disks, network, sensors, battery, energy, history
+    case overview, processes, cpu, memory, disks, network, sensors, battery, energy
     var id: String { rawValue }
 
     var title: String {
@@ -18,7 +18,6 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .sensors: "GPU & Sensors"
         case .battery: "Battery"
         case .energy: "Energy"
-        case .history: "History"
         }
     }
 
@@ -38,14 +37,13 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .sensors: "thermometer.medium"
         case .battery: "battery.75percent"
         case .energy: "bolt.fill"
-        case .history: "clock.arrow.circlepath"
         }
     }
 }
 
 /// Parts of the app that need `nettop` data.
 enum ConnectionConsumer: Hashable {
-    case networkPage, processTable, history
+    case networkPage, processTable
 }
 
 /// Combines what each consumer asks for into one connection mode.
@@ -131,9 +129,12 @@ final class SystemStore {
 
     @ObservationIgnored private let monitor = SystemMonitor()
     @ObservationIgnored private var connectionDemand = ConnectionDemand()
-    /// Writes minute history to disk; the History page reads it through `history`.
-    @ObservationIgnored let historyRecorder = HistoryRecorder()
-    var history: HistoryStore { historyRecorder.store }
+    /// Minute history written by the background agent (`BAMHistoryAgent`); the app only reads it,
+    /// apart from Settings clearing or pruning it.
+    /// `BAM_HISTORY_DB` reads another file instead (layout checks with made-up history).
+    @ObservationIgnored let history = ProcessInfo.processInfo.environment["BAM_HISTORY_DB"]
+        .map { HistoryDatabase(url: URL(fileURLWithPath: $0)) } ?? HistoryDatabase()
+    @ObservationIgnored let historyAgent = HistoryAgentService()
     @ObservationIgnored private var loop: Task<Void, Never>?
     @ObservationIgnored private var tickSleep: Task<Void, Error>?
     @ObservationIgnored private var intervalObserver: NSKeyValueObservation?
@@ -144,12 +145,11 @@ final class SystemStore {
 
     init() {
         Defaults.register()
-        #if WIDGETS
-        historyRecorder.onMinute = { [weak self] minute in
-            guard let self else { return }
-            WidgetFeed.record(minute, disk: snapshot?.disks.volumes.first { $0.path == "/" }?.usedFraction ?? 0)
+        // Keep the login item in line with the setting (e.g. after the app moved). Tooling runs that
+        // force history on via launch arguments set BAM_NO_AGENT so they never register one.
+        if ProcessInfo.processInfo.environment["BAM_NO_AGENT"] == nil {
+            historyAgent.sync(enabled: Defaults.historyEnabled)
         }
-        #endif
         start()
         DebugSnapshot.store = self
         if let start = ProcessInfo.processInfo.environment["BAM_START_SECTION"].flatMap(AppSection.init(rawValue:)) {
@@ -304,6 +304,9 @@ final class SystemStore {
             push(&diskRead, s.disks.readRate)
             push(&diskWrite, s.disks.writeRate)
             push(&processPower, s.processes.reduce(0) { $0 + $1.power })
+            #if WIDGETS
+            WidgetFeed.record(s, cpuHistory: cpuTotal, gpuHistory: gpu)
+            #endif
         }
 
         let m = s.memory
@@ -349,10 +352,6 @@ final class SystemStore {
         if appsDirty {
             appsDirty = false
             refreshApps()
-        }
-        if snapshot != nil {
-            let wanted = historyRecorder.record(s, systemPower: systemPower(of: s), name: displayName)
-            requestConnections(wanted, for: .history)
         }
         if !paused {
             processes = s.processes
@@ -407,13 +406,7 @@ final class SystemStore {
     func displayName(_ entry: ProcessEntry) -> String { apps[entry.pid]?.name ?? entry.name }
 
     /// What the whole Mac draws right now: battery telemetry when there is one, else the sum over processes.
-    var systemPower: Double? { snapshot.map(systemPower(of:)) }
-
-    func systemPower(of s: SystemSnapshot) -> Double {
-        if let load = s.battery?.systemLoad, load > 0 { return load }
-        if let w = s.battery?.watts, !(s.battery?.isPluggedIn ?? true) { return abs(w) }
-        return s.processes.reduce(0) { $0 + $1.power }
-    }
+    var systemPower: Double? { snapshot?.systemPower }
 
     func energyGroups(sort: EnergySort) -> [EnergyGroup] {
         EnergyRows.sorted(EnergyRows.groups(snapshot?.processes ?? [], apps: apps, displayName: displayName), by: sort)

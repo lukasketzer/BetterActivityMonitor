@@ -218,11 +218,18 @@ struct CPUView: View {
                     }
 
                     Panel("CPU Load", symbol: "chart.xyaxis.line") {
-                        HistoryChart(series: [
-                            ChartSeries(name: "User", color: theme.cpuUser, history: store.cpuUser),
-                            ChartSeries(name: "System", color: theme.cpuSystem, history: store.cpuSystem),
-                        ], maxY: 1, stacked: true) { Fmt.percent($0, digits: 0) }
-                            .frame(height: 180)
+                        HistoryRangePicker()
+                    } content: {
+                        RangedChart(series: [
+                            HistorySeries(metric: .cpuMax, name: "Peak", color: theme.cpuUser.opacity(0.45)),
+                            HistorySeries(metric: .cpu, name: "Average", color: theme.cpuUser),
+                        ], maxY: 1, format: { Fmt.percent($0, digits: 0) }) {
+                            HistoryChart(series: [
+                                ChartSeries(name: "User", color: theme.cpuUser, history: store.cpuUser),
+                                ChartSeries(name: "System", color: theme.cpuSystem, history: store.cpuSystem),
+                            ], maxY: 1, stacked: true) { Fmt.percent($0, digits: 0) }
+                        }
+                        .frame(height: 180)
                     }
 
                     Panel("Cores", symbol: "square.grid.3x3") {
@@ -243,16 +250,21 @@ struct CPUView: View {
                             }
                         }
                         Panel("Top CPU", symbol: "flame") {
-                            TopProcessList(entries: store.top(by: \.cpu)) { Fmt.number($0.cpu) + "%" }
+                            RangedTopList(ranking: .cpu, count: 5) {
+                                TopProcessList(entries: store.top(by: \.cpu)) { Fmt.number($0.cpu) + "%" }
+                            }
                         }
                     }
                     .fixedSize(horizontal: false, vertical: true)
 
                     if store.cpuTemperature.points.count > 1 {
                         Panel("CPU Temperature", symbol: "thermometer.medium") {
-                            HistoryChart(series: [ChartSeries(name: "Hottest die", color: theme.temperature, history: store.cpuTemperature)],
-                                         maxY: nil) { Fmt.temperature($0, fahrenheit: fahrenheit) }
-                                .frame(height: 120)
+                            RangedChart(series: [HistorySeries(metric: .cpuTempMax, name: "Hottest die", color: theme.temperature)],
+                                        maxY: nil, format: { Fmt.temperature($0, fahrenheit: fahrenheit) }) {
+                                HistoryChart(series: [ChartSeries(name: "Hottest die", color: theme.temperature, history: store.cpuTemperature)],
+                                             maxY: nil) { Fmt.temperature($0, fahrenheit: fahrenheit) }
+                            }
+                            .frame(height: 120)
                         }
                     }
                 }

@@ -35,6 +35,7 @@ let package = Package(
         .target(
             name: "SystemKit",
             linkerSettings: [
+                .linkedLibrary("sqlite3"),
                 .linkedFramework("IOKit"),
                 .linkedFramework("SystemConfiguration"),
             ]
@@ -43,6 +44,11 @@ let package = Package(
             name: "BetterActivityMonitor",
             dependencies: ["SystemKit"],
             linkerSettings: currentDesign
+        ),
+        // Background agent that records minute history; embedded in the app bundle (see bundle.sh / Xcode).
+        .executableTarget(
+            name: "BAMHistoryAgent",
+            dependencies: ["SystemKit"]
         ),
         .executableTarget(
             name: "sysbench",

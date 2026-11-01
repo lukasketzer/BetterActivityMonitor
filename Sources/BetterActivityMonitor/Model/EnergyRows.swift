@@ -1,19 +1,6 @@
 import Foundation
 import SystemKit
 
-enum AppBundle {
-    /// The outermost `.app` bundle an executable lives in, so helpers nested in
-    /// `Foo.app/Contents/Frameworks/…/Helper.app` count as `Foo.app`.
-    static func path(forExecutable path: String) -> String? {
-        guard let range = path.range(of: ".app/") else { return nil }
-        return String(path[..<range.lowerBound]) + ".app"
-    }
-
-    static func name(ofBundle path: String) -> String {
-        ((path as NSString).lastPathComponent as NSString).deletingPathExtension
-    }
-}
-
 /// One line of the Energy page: an app with all its helper processes, or a lone process.
 struct EnergyGroup: Identifiable, Hashable {
     /// Bundle path, or `pid:<n>` for a process outside any bundle.

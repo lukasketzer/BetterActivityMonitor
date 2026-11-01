@@ -93,12 +93,22 @@ struct MemoryView: View {
                     }
 
                     Panel("Memory Over Time", symbol: "chart.xyaxis.line") {
-                        HistoryChart(series: [
-                            ChartSeries(name: "App", color: theme.memApp, history: store.memApp),
-                            ChartSeries(name: "Wired", color: theme.memWired, history: store.memWired),
-                            ChartSeries(name: "Compressed", color: theme.memCompressed, history: store.memCompressed),
-                        ], maxY: Double(m.total), stacked: true) { Fmt.bytes($0) }
-                            .frame(height: 180)
+                        HistoryRangePicker()
+                    } content: {
+                        // History keeps the used share; pressure shows as shaded spans behind it.
+                        RangedChart(series: [HistorySeries(metric: .memUsed, name: "Used", color: theme.memApp)],
+                                    maxY: 1, bandMetrics: [.memPressure], bands: { data in
+                                        data[.memPressure].compactMap { v in
+                                            v.value >= 4 ? (v.date, theme.high) : v.value >= 2 ? (v.date, theme.mid) : nil
+                                        }
+                                    }, format: { Fmt.percent($0, digits: 0) }) {
+                            HistoryChart(series: [
+                                ChartSeries(name: "App", color: theme.memApp, history: store.memApp),
+                                ChartSeries(name: "Wired", color: theme.memWired, history: store.memWired),
+                                ChartSeries(name: "Compressed", color: theme.memCompressed, history: store.memCompressed),
+                            ], maxY: Double(m.total), stacked: true) { Fmt.bytes($0) }
+                        }
+                        .frame(height: 180)
                     }
 
                     HStack(alignment: .top, spacing: 16) {
@@ -116,7 +126,9 @@ struct MemoryView: View {
                             }
                         }
                         Panel("Top Memory", symbol: "memorychip") {
-                            TopProcessList(entries: store.topMemory(count: 8)) { Fmt.bytes($0.memory) }
+                            RangedTopList(ranking: .memory) {
+                                TopProcessList(entries: store.topMemory(count: 8)) { Fmt.bytes($0.memory) }
+                            }
                         }
                     }
                     .fixedSize(horizontal: false, vertical: true)

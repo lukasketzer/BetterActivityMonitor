@@ -48,6 +48,9 @@ plus a fast process list that lets you find, inspect and stop any app.
 - **Disks**: free space on each drive, and how fast data is being read and written.
 - **Temperatures and fans**: CPU, GPU, battery and SSD temperatures, plus fan speeds.
 - **Battery**: charge, health, charge cycles, power use and time remaining.
+- **History**: a background agent keeps a minute-by-minute record, also while the app is closed. Switch any
+  resource page from Live to the last hour, day, week or month, and see which apps used the most then.
+- **Energy**: watts per app, what keeps your Mac awake, and how much power it draws over time.
 - **Desktop widgets**: put live CPU, GPU, memory, disk, battery and uptime widgets on your desktop or in
   Notification Center: rings, bars, or graphs of the last day. Edit a widget to choose its metrics; click it to
   jump to that screen.
@@ -108,6 +111,7 @@ More on the build, tests and tooling in [CONTRIBUTING.md](docs/CONTRIBUTING.md).
 - [x] Network connections, listening sockets and connection log
 - [x] Desktop and Notification Center widgets
 - [x] Customizable menu bar item
+- [x] History over days and weeks
 - [ ] More settings
 - [ ] Notarized builds
 
