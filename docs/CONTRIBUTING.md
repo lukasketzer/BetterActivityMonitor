@@ -121,7 +121,7 @@ Run the performance tests in release mode. Debug builds are several times slower
 | `scripts/package.sh` | Release DMG + zip + `SHA256SUMS` in `build/`, from `build-app.sh`; Developer ID signing and notarization when `DEVELOPER_ID` / `NOTARY_*` are set |
 | `scripts/version.sh [nightly\|build\|set X.Y.Z]` | Prints or sets the version (see [Versioning](#versioning-and-releases)) |
 | `scripts/release.sh [version] [--push]` | Promotes `main` to a release (see [Versioning](#versioning-and-releases)) |
-| `scripts/make-icon.sh` | Regenerates the app icon (`Resources/AppIcon.icns` + `Resources/AppIcon.icon`) from `scripts/make-icon.swift` |
+| `scripts/make-icon.sh` | Regenerates the app icon (`Resources/AppIcon.icns` + `Resources/AppIcon.icon`) and the README's `docs/icon.png` from `scripts/make-icon.swift` |
 | `scripts/cputime.sh <pid>` | Total CPU seconds a process has used |
 
 ## Developer environment variables
