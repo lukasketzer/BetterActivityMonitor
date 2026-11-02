@@ -6,6 +6,8 @@ tagged version into the GitHub Release notes; nightly builds show the `Unrelease
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-02
+
 ### Added
 
 - Settings ▸ General ▸ Sidebar lets you choose which pages appear in the sidebar. The Temperatures page is off by default.
