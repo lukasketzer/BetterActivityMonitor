@@ -1,4 +1,22 @@
 import SwiftUI
+import AppKit
+
+/// Keeps the Settings window above the main window. SwiftUI's window ordering otherwise lets the main window
+/// (which redraws on every sample) come to the front and cover Settings.
+private struct KeepWindowInFront: NSViewRepresentable {
+    final class Anchor: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            window.level = .floating
+            // Floating windows would otherwise stay on screen over other apps; hide with the app instead.
+            window.hidesOnDeactivate = true
+        }
+    }
+
+    func makeNSView(context: Context) -> Anchor { Anchor() }
+    func updateNSView(_ view: Anchor, context: Context) {}
+}
 
 struct SettingsView: View {
     var body: some View {
@@ -10,6 +28,7 @@ struct SettingsView: View {
         }
         .frame(width: 520)
         .scenePadding()
+        .background(KeepWindowInFront())
     }
 }
 
@@ -145,6 +164,8 @@ private struct MenuBarSettings: View {
     var body: some View {
         Form {
             Toggle("Show in menu bar", isOn: $show)
+            // Only the options below are greyed out; the toggle itself must stay usable to turn this back on.
+            Group {
             Section {
                 MenuBarPreview(glyph: MenuBarGlyph(readings: store.menuBarReadings(items.enabled, fahrenheit: fahrenheit),
                                                    style: style, colored: colored, symbols: symbols, theme: Theme.named(themeID)))
@@ -176,9 +197,10 @@ private struct MenuBarSettings: View {
                 Text("Drag to reorder. Network shows download over upload and has no ring.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            }
+            .disabled(!show)
         }
         .formStyle(.grouped)
-        .disabled(!show)
     }
 
     private func isAvailable(_ metric: MenuBarMetric) -> Bool {
