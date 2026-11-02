@@ -139,6 +139,18 @@ struct SensorsView: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
     @AppStorage(SettingsKey.fahrenheit) private var fahrenheit = false
+    /// Comma-separated raw values of the sensor categories whose lists are expanded. Lists start collapsed.
+    @AppStorage(SettingsKey.sensorsExpanded) private var expandedCategories = ""
+
+    private func expanded(_ category: SensorCategory) -> Binding<Bool> {
+        Binding {
+            expandedCategories.split(separator: ",").contains { $0 == category.rawValue }
+        } set: { isExpanded in
+            var set = Set(expandedCategories.split(separator: ",").map(String.init))
+            if isExpanded { set.insert(category.rawValue) } else { set.remove(category.rawValue) }
+            expandedCategories = set.sorted().joined(separator: ",")
+        }
+    }
 
     var body: some View {
         DetailPage {
@@ -158,36 +170,18 @@ struct SensorsView: View {
                     }
                 }
 
-                if let fans = store.snapshot?.fans, !fans.isEmpty {
-                    Panel("Fans", symbol: "fan") {
-                        HStack(spacing: 28) {
-                            ForEach(Array(fans.enumerated()), id: \.offset) { index, rpm in
-                                BigStat(title: "Fan \(index + 1)", value: "\(Int(rpm)) rpm")
-                            }
-                            Spacer()
-                        }
-                    }
-                }
-
                 let groups = SensorGroup.make(store.snapshot?.sensors ?? [])
                 if groups.isEmpty {
                     EmptyState(title: "No Temperature Sensors", symbol: "thermometer.slash",
                                message: "This Mac doesn't expose temperature sensors to apps.")
                 } else {
-                    if store.cpuTemperature.points.count > 1 {
-                        Panel("CPU Temperature", symbol: "thermometer.medium") {
-                            HistoryChart(series: [ChartSeries(name: "Hottest CPU die", color: theme.temperature, history: store.cpuTemperature)],
-                                         maxY: nil) { Fmt.temperature($0, fahrenheit: fahrenheit) }
-                                .frame(height: 140)
-                        }
-                    }
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 16, alignment: .top)], spacing: 16) {
+                    VStack(spacing: 10) {
                         ForEach(groups) { group in
-                            Panel(group.category.rawValue, symbol: symbol(group.category)) {
+                            Panel(group.category.rawValue, symbol: symbol(group.category), expanded: expanded(group.category)) {
                                 Text("avg \(Fmt.temperature(group.average, fahrenheit: fahrenheit)) · max \(Fmt.temperature(group.max, fahrenheit: fahrenheit))")
                                     .monospacedDigit()
                             } content: {
-                                VStack(spacing: 5) {
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 28, alignment: .top)], spacing: 5) {
                                     ForEach(group.sensors) { sensor in
                                         HStack(spacing: 8) {
                                             Text(sensor.name).font(.callout).lineLimit(1)

@@ -6,6 +6,14 @@ tagged version into the GitHub Release notes; nightly builds show the `Unrelease
 
 ## [Unreleased]
 
+### Added
+
+- Press `/` in the process list to jump into the search field.
+- New System page (⌘0) in the style of About This Mac: the Mac's name and macOS version above its hardware and
+  software details (chip, memory, disk, display, battery, kernel, uptime, address). The CPU temperature chart and fans moved there from the CPU and GPU & Sensors pages.
+- The Cores panel on the CPU page, the Virtual Memory panel on the Memory page and each sensor list on the GPU & Sensors page are now
+  collapsed by default and sit at the bottom of their page as compact rows. Click the header to expand one; the app remembers which are open.
+
 ## [0.2.0] - 2026-11-01
 
 ### Added

@@ -69,6 +69,7 @@ struct ContentView: View {
         case .sensors: SensorsView()
         case .battery: BatteryView()
         case .energy: EnergyView()
+        case .system: SystemView()
         }
     }
 }
@@ -127,6 +128,7 @@ private struct Sidebar: View {
                 }
                 row(.energy, value: store.systemPower.map(Fmt.watts),
                     graph: store.processPower.values, max: 1, color: theme.mid)
+                row(.system, value: nil)
             }
         }
         .listStyle(.sidebar)

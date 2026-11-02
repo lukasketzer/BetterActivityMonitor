@@ -201,6 +201,7 @@ struct CPUView: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
     @AppStorage(SettingsKey.fahrenheit) private var fahrenheit = false
+    @AppStorage(SettingsKey.cpuCoresExpanded) private var coresExpanded = false
 
     var body: some View {
         DetailPage {
@@ -225,47 +226,19 @@ struct CPUView: View {
                             .frame(height: 180)
                     }
 
-                    Panel("Cores", symbol: "square.grid.3x3") {
+                    Panel("Top CPU", symbol: "flame") {
+                        TopProcessList(entries: store.top(by: \.cpu)) { Fmt.number($0.cpu) + "%" }
+                    }
+
+                    Panel("Cores", symbol: "square.grid.3x3", expanded: $coresExpanded) {
                         Text("\(s.cpu.logicalCores) logical")
                     } content: {
                         CoreGrid()
-                    }
-
-                    HStack(alignment: .top, spacing: 16) {
-                        Panel("System", symbol: "info.circle") {
-                            Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
-                                StatRow("Processor", s.cpu.model)
-                                StatRow("Cores", coreDescription(s.cpu))
-                                StatRow("Load average", s.cpu.loadAverage.map { Fmt.number($0, digits: 2) }.joined(separator: "  "))
-                                StatRow("Uptime", Fmt.duration(s.cpu.uptime))
-                                StatRow("Processes", "\(s.cpu.processCount)")
-                                StatRow("Threads", "\(s.cpu.threadCount)")
-                            }
-                        }
-                        Panel("Top CPU", symbol: "flame") {
-                            TopProcessList(entries: store.top(by: \.cpu)) { Fmt.number($0.cpu) + "%" }
-                        }
-                    }
-                    .fixedSize(horizontal: false, vertical: true)
-
-                    if store.cpuTemperature.points.count > 1 {
-                        Panel("CPU Temperature", symbol: "thermometer.medium") {
-                            HistoryChart(series: [ChartSeries(name: "Hottest die", color: theme.temperature, history: store.cpuTemperature)],
-                                         maxY: nil) { Fmt.temperature($0, fahrenheit: fahrenheit) }
-                                .frame(height: 120)
-                        }
                     }
                 }
                 .padding()
             }
         }
-    }
-
-    private func coreDescription(_ cpu: CPUStats) -> String {
-        if cpu.performanceCores > 0 {
-            return "\(cpu.performanceCores) performance + \(cpu.efficiencyCores) efficiency"
-        }
-        return "\(cpu.physicalCores) physical, \(cpu.logicalCores) logical"
     }
 }
 

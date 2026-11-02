@@ -30,7 +30,7 @@ final class RefreshIntervalTests: XCTestCase {
 
 final class SectionShortcutTests: XCTestCase {
     func testSectionsGetCommandDigits() {
-        XCTAssertEqual(AppSection.allCases.count, 9)
+        XCTAssertEqual(AppSection.allCases.count, 10)
         XCTAssertEqual(AppSection.shortcut(index: 0), KeyEquivalent("1"))
         XCTAssertEqual(AppSection.shortcut(index: 8), KeyEquivalent("9"))
         XCTAssertEqual(AppSection.shortcut(index: 9), KeyEquivalent("0"), "a tenth section must not trap")

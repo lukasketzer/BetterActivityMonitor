@@ -4,7 +4,7 @@ import Observation
 import SystemKit
 
 enum AppSection: String, CaseIterable, Identifiable {
-    case overview, processes, cpu, memory, disks, network, sensors, battery, energy
+    case overview, processes, cpu, memory, disks, network, sensors, battery, energy, system
     var id: String { rawValue }
 
     var title: String {
@@ -18,6 +18,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .sensors: "GPU & Sensors"
         case .battery: "Battery"
         case .energy: "Energy"
+        case .system: "System"
         }
     }
 
@@ -37,6 +38,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .sensors: "thermometer.medium"
         case .battery: "battery.75percent"
         case .energy: "bolt.fill"
+        case .system: "desktopcomputer"
         }
     }
 }

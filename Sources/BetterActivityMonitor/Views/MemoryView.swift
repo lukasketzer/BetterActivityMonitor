@@ -59,6 +59,7 @@ struct MemoryPanel: View {
 struct MemoryView: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
+    @AppStorage(SettingsKey.memoryVirtualExpanded) private var virtualExpanded = false
 
     var body: some View {
         DetailPage {
@@ -101,25 +102,28 @@ struct MemoryView: View {
                             .frame(height: 180)
                     }
 
-                    HStack(alignment: .top, spacing: 16) {
-                        Panel("Virtual Memory", symbol: "arrow.left.arrow.right") {
+                    Panel("Top Memory", symbol: "memorychip") {
+                        TopProcessList(entries: store.topMemory(count: 8)) { Fmt.bytes($0.memory) }
+                    }
+
+                    Panel("Virtual Memory", symbol: "arrow.left.arrow.right", expanded: $virtualExpanded) {
+                        Text("\(Fmt.bytes(m.swapUsed)) swap used").monospacedDigit()
+                    } content: {
+                        HStack(alignment: .top, spacing: 24) {
                             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
                                 StatRow("Page ins", "\(Fmt.compact(Double(m.pageIns))) · \(Fmt.number(m.pageInsPerSecond, digits: 0))/s")
                                 StatRow("Page outs", "\(Fmt.compact(Double(m.pageOuts))) · \(Fmt.number(m.pageOutsPerSecond, digits: 0))/s")
                                 StatRow("Compressions", "\(Fmt.number(m.compressionsPerSecond, digits: 0))/s")
                                 StatRow("Swap", "\(Fmt.bytes(m.swapUsed)) of \(Fmt.bytes(m.swapTotal))")
                             }
+                            .fixedSize()
                             if store.swapUsed.points.count > 1 {
                                 HistoryChart(series: [ChartSeries(name: "Swap", color: theme.swap, history: store.swapUsed)],
                                              maxY: nil) { Fmt.bytes($0) }
-                                    .frame(height: 70)
+                                    .frame(height: 90)
                             }
                         }
-                        Panel("Top Memory", symbol: "memorychip") {
-                            TopProcessList(entries: store.topMemory(count: 8)) { Fmt.bytes($0.memory) }
-                        }
                     }
-                    .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding()
             }

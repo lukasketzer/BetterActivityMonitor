@@ -7,43 +7,79 @@ struct Panel<Content: View, Accessory: View>: View {
     var symbol: String
     /// Section the title navigates to when clicked.
     var destination: AppSection?
+    /// When set, the panel is a disclosure: clicking the header shows or hides the content.
+    var expanded: Binding<Bool>?
     @ViewBuilder var accessory: Accessory
     @ViewBuilder var content: Content
     @State private var auditKey = UUID()
 
     init(_ title: String, symbol: String, destination: AppSection? = nil,
+         expanded: Binding<Bool>? = nil,
          @ViewBuilder accessory: () -> Accessory = { EmptyView() }, @ViewBuilder content: () -> Content) {
         self.title = title
         self.symbol = symbol
         self.destination = destination
+        self.expanded = expanded
         self.accessory = accessory()
         self.content = content()
     }
 
+    private var isCollapsed: Bool { expanded?.wrappedValue == false }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                if let destination {
+            if let expanded {
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) { expanded.wrappedValue.toggle() }
+                } label: {
+                    headerRow(chevron: true).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(expanded.wrappedValue ? "Hide \(title)" : "Show \(title)")
+                .accessibilityLabel(title)
+                .accessibilityValue(expanded.wrappedValue ? "Expanded" : "Collapsed")
+            } else if let destination {
+                HStack(spacing: 6) {
                     Button { store.section = destination } label: { header }
                         .buttonStyle(.plain)
                         .help("Show \(title) details")
-                } else {
-                    header
+                    trailing
                 }
-                Spacer(minLength: 4)
-                accessory
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+            } else {
+                headerRow(chevron: false)
             }
-            content
+            if !isCollapsed { content }
         }
         .layoutAudit(title, key: auditKey, content: true)
-        .padding(14)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, isCollapsed ? 11 : 14)
+        // A collapsed disclosure keeps its compact height instead of stretching to its neighbours.
+        .frame(maxWidth: .infinity, maxHeight: isCollapsed ? nil : .infinity, alignment: .topLeading)
         .glassCard()
         .layoutAudit(title, key: auditKey)
+    }
+
+    private func headerRow(chevron: Bool) -> some View {
+        HStack(spacing: 6) {
+            header
+            trailing
+            if chevron, let expanded {
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
+                    .rotationEffect(.degrees(expanded.wrappedValue ? 90 : 0))
+                    .frame(width: 14, height: 14)
+            }
+        }
+    }
+
+    @ViewBuilder private var trailing: some View {
+        Spacer(minLength: 4)
+        accessory
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .font(.callout)
+            .foregroundStyle(.secondary)
     }
 
     private var header: some View {
