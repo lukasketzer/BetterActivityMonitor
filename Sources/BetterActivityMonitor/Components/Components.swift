@@ -274,3 +274,36 @@ struct DetailPage<Content: View>: View {
         .background(AmbientBackground())
     }
 }
+
+/// Overview tile: one headline value, one short caption and a history chart (the network and disk cards).
+struct OverviewTile<Chart: View>: View {
+    var title: String
+    var symbol: String
+    var destination: AppSection
+    var value: String
+    var caption: String
+    var badge: String? = nil
+    @ViewBuilder var chart: Chart
+
+    var body: some View {
+        Panel(title, symbol: symbol, destination: destination) {
+            if let badge { Text(badge).monospacedDigit() }
+        } content: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 24, weight: .semibold).monospacedDigit())
+                    .contentTransition(.numericText())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text(caption)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            chart
+                .frame(minHeight: 120)
+                .padding(.top, 4)
+        }
+    }
+}

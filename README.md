@@ -23,7 +23,7 @@ plus a fast process list that lets you find, inspect and stop any app.
 
 <br>
 
-<img src="docs/screenshots/overview.png" alt="Overview: CPU, GPU, memory, network, disk and sensor cards above the process list">
+<img src="docs/screenshots/overview.png" alt="Overview: rings for CPU, GPU, memory and temperature, and network and disk activity">
 
 </div>
 
@@ -36,8 +36,8 @@ plus a fast process list that lets you find, inspect and stop any app.
 
 ## Features
 
-- **Everything on one screen**: the Overview puts CPU, GPU, memory, network, disks and temperatures above a live
-  list of what's running. Pick the cards you want to see.
+- **See how your Mac is doing at a glance**: the Overview shows CPU, GPU, memory and temperature as
+  rings and graphs network and disk activity. Pick what it shows.
 - **Find and control any process**: sort by what's using the most, search as you type, or show just your apps.
   See which process started which in a tree view. Quit, force quit or pause a process, change its priority,
   or open it for a closer look.

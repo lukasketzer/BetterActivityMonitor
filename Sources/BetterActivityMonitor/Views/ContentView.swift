@@ -66,6 +66,7 @@ struct ContentView: View {
         case .memory: MemoryView()
         case .disks: DisksView()
         case .network: NetworkView()
+        case .gpu: GPUView()
         case .sensors: SensorsView()
         case .battery: BatteryView()
         case .energy: EnergyView()
@@ -104,31 +105,50 @@ private struct FreezeDuringLiveResize: ViewModifier {
 private struct Sidebar: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
+    @AppStorage(SettingsKey.sidebarHidden) private var hiddenSections = AppSection.defaultHidden
 
     var body: some View {
         @Bindable var store = store
+        let hidden = AppSection.hidden(hiddenSections)
         List(selection: $store.section) {
             Section("Monitor") {
                 row(.overview, value: nil)
-                row(.processes, value: store.snapshot.map { "\($0.cpu.processCount)" })
+                if !hidden.contains(.processes) { row(.processes, value: store.snapshot.map { "\($0.cpu.processCount)" }) }
             }
             Section("Resources") {
-                row(.cpu, value: store.snapshot.map { Fmt.percent($0.cpu.total, digits: 0) },
-                    graph: store.cpuTotal.values, max: 1, color: theme.cpu)
-                row(.memory, value: store.snapshot.map { Fmt.percent($0.memory.usedFraction, digits: 0) },
-                    graph: store.memUsed.values, max: 1, color: theme.memApp)
-                row(.disks, value: store.snapshot.map { Fmt.rate($0.disks.readRate + $0.disks.writeRate) },
-                    graph: zip(store.diskRead.values, store.diskWrite.values).map(+), max: 1, color: theme.diskRead)
-                row(.network, value: store.snapshot.map { Fmt.rate($0.network.rateIn + $0.network.rateOut) },
-                    graph: zip(store.netIn.values, store.netOut.values).map(+), max: 1, color: theme.netIn)
-                row(.sensors, value: store.snapshot?.gpu.map { Fmt.percent($0.utilization, digits: 0) },
-                    graph: store.gpu.values, max: 1, color: theme.gpu)
-                if store.snapshot?.battery != nil {
+                if !hidden.contains(.cpu) {
+                    row(.cpu, value: store.snapshot.map { Fmt.percent($0.cpu.total, digits: 0) },
+                        graph: store.cpuTotal.values, max: 1, color: theme.cpu)
+                }
+                if !hidden.contains(.memory) {
+                    row(.memory, value: store.snapshot.map { Fmt.percent($0.memory.usedFraction, digits: 0) },
+                        graph: store.memUsed.values, max: 1, color: theme.memApp)
+                }
+                if !hidden.contains(.disks) {
+                    row(.disks, value: store.snapshot.map { Fmt.rate($0.disks.readRate + $0.disks.writeRate) },
+                        graph: zip(store.diskRead.values, store.diskWrite.values).map(+), max: 1, color: theme.diskRead)
+                }
+                if !hidden.contains(.network) {
+                    row(.network, value: store.snapshot.map { Fmt.rate($0.network.rateIn + $0.network.rateOut) },
+                        graph: zip(store.netIn.values, store.netOut.values).map(+), max: 1, color: theme.netIn)
+                }
+                if store.snapshot?.gpu != nil, !hidden.contains(.gpu) {
+                    row(.gpu, value: store.snapshot?.gpu.map { Fmt.percent($0.utilization, digits: 0) },
+                        graph: store.gpu.values, max: 1, color: theme.gpu)
+                }
+                if store.snapshot?.battery != nil, !hidden.contains(.battery) {
                     row(.battery, value: store.snapshot?.battery.map { Fmt.percent($0.charge, digits: 0) })
                 }
-                row(.energy, value: store.systemPower.map(Fmt.watts),
-                    graph: store.processPower.values, max: 1, color: theme.mid)
-                row(.system, value: nil)
+                if !hidden.contains(.energy) {
+                    row(.energy, value: store.systemPower.map(Fmt.watts),
+                        graph: store.processPower.values, max: 1, color: theme.mid)
+                }
+                if !hidden.contains(.sensors) {
+                    row(.sensors, value: nil)
+                }
+                if !hidden.contains(.system) {
+                    row(.system, value: nil)
+                }
             }
         }
         .listStyle(.sidebar)

@@ -4,7 +4,7 @@ import Observation
 import SystemKit
 
 enum AppSection: String, CaseIterable, Identifiable {
-    case overview, processes, cpu, memory, disks, network, sensors, battery, energy, system
+    case overview, processes, cpu, memory, disks, network, gpu, sensors, battery, energy, system
     var id: String { rawValue }
 
     var title: String {
@@ -15,16 +15,32 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .memory: "Memory"
         case .disks: "Disks"
         case .network: "Network"
-        case .sensors: "GPU & Sensors"
+        case .gpu: "GPU"
+        case .sensors: "Temperatures"
         case .battery: "Battery"
         case .energy: "Energy"
         case .system: "System"
         }
     }
 
-    /// ⌘1…⌘9, then ⌘0 for the tenth section. A two-digit `Character` would trap.
-    static func shortcut(index: Int) -> KeyEquivalent {
-        KeyEquivalent(Character(String((index + 1) % 10)))
+    /// Sections the user can hide in Settings (Overview always stays).
+    static var hideable: [AppSection] { allCases.filter { $0 != .overview } }
+    /// Hidden on a fresh install; turn on in Settings ▸ General.
+    static let defaultHidden = "sensors"
+
+    /// Sections hidden by the comma-separated raw values stored under `SettingsKey.sidebarHidden`.
+    static func hidden(_ raw: String) -> Set<AppSection> {
+        Set(raw.split(separator: ",").compactMap { AppSection(rawValue: String($0)) }).subtracting([.overview])
+    }
+
+    static func visible(hidden raw: String) -> [AppSection] {
+        let hidden = hidden(raw)
+        return allCases.filter { !hidden.contains($0) }
+    }
+
+    /// ⌘1…⌘9, then ⌘0 for the tenth section; later sections have no shortcut.
+    static func shortcut(index: Int) -> KeyEquivalent? {
+        index < 10 ? KeyEquivalent(Character(String((index + 1) % 10))) : nil
     }
 
     var symbol: String {
@@ -35,6 +51,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .memory: "memorychip"
         case .disks: "internaldrive"
         case .network: "network"
+        case .gpu: "cube.transparent"
         case .sensors: "thermometer.medium"
         case .battery: "battery.75percent"
         case .energy: "bolt.fill"

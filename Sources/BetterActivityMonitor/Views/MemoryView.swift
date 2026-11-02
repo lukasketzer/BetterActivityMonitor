@@ -18,44 +18,6 @@ private func pressureColor(_ pressure: MemoryPressure, _ theme: Theme) -> Color 
     }
 }
 
-struct MemoryPanel: View {
-    @Environment(SystemStore.self) private var store
-    @Environment(\.theme) private var theme
-
-    var body: some View {
-        Panel("Memory", symbol: "memorychip", destination: .memory) {
-            if let m = store.snapshot?.memory {
-                Text("\(Fmt.bytes(m.used)) / \(Fmt.bytes(m.total))").monospacedDigit()
-            }
-        } content: {
-            if let m = store.snapshot?.memory {
-                VStack(alignment: .leading, spacing: 8) {
-                    StackedBar(parts: m.parts(theme), total: Double(m.total))
-                    HStack(alignment: .top, spacing: 10) {
-                        VStack(spacing: 3) {
-                            LegendItem(color: theme.memApp, label: "App", value: Fmt.bytes(m.app), font: .caption)
-                            LegendItem(color: theme.memWired, label: "Wired", value: Fmt.bytes(m.wired), font: .caption)
-                            LegendItem(color: theme.memCompressed, label: "Compressed", value: Fmt.bytes(m.compressed), font: .caption)
-                        }
-                        VStack(spacing: 3) {
-                            LegendItem(color: theme.memCached, label: "Cached", value: Fmt.bytes(m.cached), font: .caption)
-                            LegendItem(color: .secondary, label: "Free", value: Fmt.bytes(m.free), font: .caption)
-                            LegendItem(color: theme.swap, label: "Swap", value: Fmt.bytes(m.swapUsed), font: .caption)
-                        }
-                    }
-                    HStack(spacing: 6) {
-                        Text("Pressure").font(.caption).foregroundStyle(.secondary)
-                        Text(m.pressure.label).font(.caption.bold()).foregroundStyle(pressureColor(m.pressure, theme))
-                    }
-                    HistoryChart(series: [ChartSeries(name: "Used", color: pressureColor(m.pressure, theme), history: store.memUsed)],
-                                 maxY: 1, showsYAxis: false) { Fmt.percent($0, digits: 0) }
-                        .frame(minHeight: 40)
-                }
-            }
-        }
-    }
-}
-
 struct MemoryView: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme

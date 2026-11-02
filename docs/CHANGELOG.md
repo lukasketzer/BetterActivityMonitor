@@ -8,11 +8,20 @@ tagged version into the GitHub Release notes; nightly builds show the `Unrelease
 
 ### Added
 
+- Settings ▸ General ▸ Sidebar lets you choose which pages appear in the sidebar. The Temperatures page is off by default.
+
 - Press `/` in the process list to jump into the search field.
-- New System page (⌘0) in the style of About This Mac: the Mac's name and macOS version above its hardware and
-  software details (chip, memory, disk, display, battery, kernel, uptime, address). The CPU temperature chart and fans moved there from the CPU and GPU & Sensors pages.
-- The Cores panel on the CPU page, the Virtual Memory panel on the Memory page and each sensor list on the GPU & Sensors page are now
+- New System page in the style of About This Mac: the Mac's name and macOS version above its hardware and
+  software details (chip, memory, disk, display, battery, kernel, uptime, address). The CPU temperature chart and fans moved there from the CPU and Temperatures pages.
+- The Cores panel on the CPU page, the Virtual Memory panel on the Memory page and each sensor list on the Temperatures page are now
   collapsed by default and sit at the bottom of their page as compact rows. Click the header to expand one; the app remembers which are open.
+
+### Changed
+
+- "GPU & Sensors" is split into a GPU page (load, renderer, tiler, memory, temperature) and a Temperatures page (all sensors, grouped by component).
+
+- A calmer Overview: rings show CPU, GPU, memory and temperature, and two cards graph network and disk activity. Click any of them for the details. The
+  process list moved off the Overview; it stays on the Processes page.
 
 ## [0.2.0] - 2026-11-01
 

@@ -14,10 +14,24 @@ struct SettingsView: View {
 }
 
 private struct GeneralSettings: View {
+    @Environment(SystemStore.self) private var store
     @AppStorage(SettingsKey.refreshInterval) private var interval = 1.0
     @AppStorage(SettingsKey.historyLength) private var history = 120
     @AppStorage(SettingsKey.fahrenheit) private var fahrenheit = false
     @AppStorage(SettingsKey.freezeDuringResize) private var freezeDuringResize = true
+    @AppStorage(SettingsKey.sidebarHidden) private var hiddenSections = AppSection.defaultHidden
+
+    private func shown(_ section: AppSection) -> Binding<Bool> {
+        Binding {
+            !AppSection.hidden(hiddenSections).contains(section)
+        } set: { on in
+            var hidden = AppSection.hidden(hiddenSections)
+            if on { hidden.remove(section) } else { hidden.insert(section) }
+            // Don't leave the detail pane on a page whose sidebar entry just disappeared.
+            if !on, store.section == section { store.section = .overview }
+            hiddenSections = AppSection.allCases.filter(hidden.contains).map(\.rawValue).joined(separator: ",")
+        }
+    }
 
     private var milliseconds: Binding<Int> {
         Binding { RefreshInterval.nearestPreset(Int((interval * 1000).rounded())) } set: { RefreshInterval.set($0) }
@@ -38,6 +52,13 @@ private struct GeneralSettings: View {
                 Text("Fahrenheit").tag(true)
             }
             .pickerStyle(.segmented)
+            Section("Sidebar") {
+                ForEach(AppSection.hideable) { section in
+                    Toggle(isOn: shown(section)) { Label(section.title, systemImage: section.symbol) }
+                }
+                Text("Choose which pages appear in the sidebar. Overview is always shown. Temperatures is off by default.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Toggle("Freeze content while resizing the window", isOn: $freezeDuringResize)
             Text("Keeps the page still while you drag the window edge and lays it out once when you let go. Resizing stays smooth; turn it off to see the layout adapt live.")
                 .font(.caption).foregroundStyle(.secondary)

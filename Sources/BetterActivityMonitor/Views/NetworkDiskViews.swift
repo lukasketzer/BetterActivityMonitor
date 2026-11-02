@@ -3,35 +3,20 @@ import SystemKit
 
 // MARK: Network
 
+/// Network tile for the overview.
 struct NetworkPanel: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
 
     var body: some View {
-        Panel("Network", symbol: "network", destination: .network) {
-            if let n = store.snapshot?.network {
-                HStack(spacing: 8) {
-                    Label(Fmt.rate(n.rateIn), systemImage: "arrow.down").foregroundStyle(theme.netIn)
-                    Label(Fmt.rate(n.rateOut), systemImage: "arrow.up").foregroundStyle(theme.netOut)
-                }
-                .monospacedDigit()
-            }
-        } content: {
-            VStack(alignment: .leading, spacing: 6) {
-                HistoryChart(series: [
-                    ChartSeries(name: "Download", color: theme.netIn, history: store.netIn),
-                    ChartSeries(name: "Upload", color: theme.netOut, history: store.netOut, mirrored: true),
-                ], maxY: nil) { Fmt.rate($0) }
-                    .frame(minHeight: 80)
-                if let n = store.snapshot?.network {
-                    HStack {
-                        Text("Total ↓ \(Fmt.bytes(n.totalIn))").foregroundStyle(theme.netIn)
-                        Spacer()
-                        Text("↑ \(Fmt.bytes(n.totalOut))").foregroundStyle(theme.netOut)
-                    }
-                    .font(.caption.monospacedDigit())
-                }
-            }
+        let n = store.snapshot?.network
+        OverviewTile(title: "Network", symbol: "network", destination: .network,
+                     value: n.map { "↓ \(Fmt.rate($0.rateIn))" } ?? "–",
+                     caption: n.map { "↑ \(Fmt.rate($0.rateOut)) upload" } ?? "") {
+            HistoryChart(series: [
+                ChartSeries(name: "Download", color: theme.netIn, history: store.netIn),
+                ChartSeries(name: "Upload", color: theme.netOut, history: store.netOut, mirrored: true),
+            ], maxY: nil, showsYAxis: false) { Fmt.rate($0) }
         }
     }
 }
@@ -198,31 +183,25 @@ private struct InterfaceRow: View {
 
 // MARK: Disks
 
+/// Disk tile for the overview.
 struct DisksPanel: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
 
     var body: some View {
-        Panel("Disks", symbol: "internaldrive", destination: .disks) {
-            if let d = store.snapshot?.disks {
-                HStack(spacing: 8) {
-                    Text("R \(Fmt.rate(d.readRate))").foregroundStyle(theme.diskRead)
-                    Text("W \(Fmt.rate(d.writeRate))").foregroundStyle(theme.diskWrite)
-                }
-                .monospacedDigit()
-            }
-        } content: {
-            VStack(alignment: .leading, spacing: 8) {
-                if let d = store.snapshot?.disks {
-                    ForEach(d.volumes.prefix(3)) { volume in VolumeLine(volume: volume, compact: true) }
-                }
-                HistoryChart(series: [
-                    ChartSeries(name: "Read", color: theme.diskRead, history: store.diskRead),
-                    ChartSeries(name: "Write", color: theme.diskWrite, history: store.diskWrite, mirrored: true),
-                ], maxY: nil, showsYAxis: false) { Fmt.rate($0) }
-                    .frame(minHeight: 50)
-            }
+        let d = store.snapshot?.disks
+        OverviewTile(title: "Disks", symbol: "internaldrive", destination: .disks,
+                     value: d.map { "R \(Fmt.rate($0.readRate))" } ?? "–",
+                     caption: d.map { "W \(Fmt.rate($0.writeRate))" + (freeSpace($0).map { " · \($0)" } ?? "") } ?? "") {
+            HistoryChart(series: [
+                ChartSeries(name: "Read", color: theme.diskRead, history: store.diskRead),
+                ChartSeries(name: "Write", color: theme.diskWrite, history: store.diskWrite, mirrored: true),
+            ], maxY: nil, showsYAxis: false) { Fmt.rate($0) }
         }
+    }
+
+    private func freeSpace(_ d: DiskStats) -> String? {
+        d.volumes.first.map { "\(Fmt.bytes($0.available)) free" }
     }
 }
 

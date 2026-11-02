@@ -1,110 +1,6 @@
 import SwiftUI
 import SystemKit
 
-/// btop-style GPU box: utilization graph plus renderer/tiler load, memory and temperature.
-struct GPUPanel: View {
-    @Environment(SystemStore.self) private var store
-    @Environment(\.theme) private var theme
-    @AppStorage(SettingsKey.fahrenheit) private var fahrenheit = false
-
-    var body: some View {
-        let g = store.snapshot?.gpu
-        Panel("GPU", symbol: "cube.transparent", destination: .sensors) {
-            if let g { Text(g.coreCount.map { "\($0) cores" } ?? g.name) }
-        } content: {
-            if let g {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(Fmt.percent(g.utilization, digits: 0))
-                            .font(.system(size: 28, weight: .semibold).monospacedDigit())
-                            .foregroundStyle(theme.meter(g.utilization))
-                        Spacer(minLength: 4)
-                        if let t = gpuTemperature {
-                            Label(Fmt.temperature(t, fahrenheit: fahrenheit), systemImage: "thermometer.medium")
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(temperatureColor(t, theme))
-                        }
-                    }
-                    HistoryChart(series: [ChartSeries(name: "GPU", color: theme.gpu, history: store.gpu)],
-                                 maxY: 1, showsYAxis: false) { Fmt.percent($0, digits: 0) }
-                        .frame(minHeight: 40)
-                    if let r = g.rendererUtilization { meterRow("Renderer", r, Fmt.percent(r, digits: 0)) }
-                    if let t = g.tilerUtilization { meterRow("Tiler", t, Fmt.percent(t, digits: 0)) }
-                    if let used = g.memoryUsed, let total = store.snapshot?.memory.total, total > 0 {
-                        meterRow("Memory", Double(used) / Double(total), Fmt.bytes(used))
-                    }
-                }
-            } else {
-                Text("No GPU statistics available").font(.caption).foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var gpuTemperature: Double? {
-        store.snapshot?.sensors.filter { $0.category == .gpu }.map(\.celsius).max()
-    }
-
-    private func meterRow(_ label: String, _ fraction: Double, _ value: String) -> some View {
-        HStack(spacing: 6) {
-            Text(label).foregroundStyle(.secondary).frame(width: 58, alignment: .leading)
-            MeterBar(fraction: fraction, color: theme.gpu, height: 5)
-            Text(value).monospacedDigit().frame(width: 58, alignment: .trailing)
-        }
-        .font(.caption)
-        .lineLimit(1)
-    }
-}
-
-struct SensorsPanel: View {
-    @Environment(SystemStore.self) private var store
-    @Environment(\.theme) private var theme
-    @AppStorage(SettingsKey.fahrenheit) private var fahrenheit = false
-
-    var body: some View {
-        Panel("Sensors", symbol: "thermometer.medium", destination: .sensors) {
-            if let t = store.cpuTemperatureNow { Text("CPU \(Fmt.temperature(t, fahrenheit: fahrenheit))").monospacedDigit() }
-        } content: {
-            VStack(alignment: .leading, spacing: 6) {
-                if store.cpuTemperature.points.count > 1 {
-                    HistoryChart(series: [ChartSeries(name: "Hottest CPU die", color: theme.temperature, history: store.cpuTemperature)],
-                                 maxY: nil, showsYAxis: false) { Fmt.temperature($0, fahrenheit: fahrenheit) }
-                        .frame(minHeight: 40)
-                }
-                let groups = SensorGroup.make(store.snapshot?.sensors ?? [])
-                ForEach(groups.prefix(4)) { group in
-                    HStack {
-                        Text(group.category.rawValue).foregroundStyle(.secondary)
-                        Spacer()
-                        Text(Fmt.temperature(group.max, fahrenheit: fahrenheit)).monospacedDigit()
-                            .foregroundStyle(temperatureColor(group.max, theme))
-                    }
-                    .font(.caption)
-                }
-                if let fans = store.snapshot?.fans, !fans.isEmpty {
-                    HStack {
-                        Text("Fans").foregroundStyle(.secondary)
-                        Spacer()
-                        Text(fans.allSatisfy { $0 < 1 } ? "Off" : fans.map { "\(Int($0))" }.joined(separator: " / ") + " rpm").monospacedDigit()
-                    }
-                    .font(.caption)
-                }
-                if let b = store.snapshot?.battery {
-                    HStack {
-                        Image(systemName: batterySymbol(b)).foregroundStyle(b.charge < 0.2 ? theme.high : theme.low)
-                        Text(Fmt.percent(b.charge, digits: 0)).monospacedDigit()
-                        Spacer()
-                        if let w = b.watts { Text(String(format: "%.1f W", abs(w))).monospacedDigit().foregroundStyle(.secondary) }
-                    }
-                    .font(.caption)
-                }
-                if groups.isEmpty && store.snapshot?.battery == nil {
-                    Text("No sensors available").font(.caption).foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-}
-
 struct SensorGroup: Identifiable {
     var id: SensorCategory { category }
     var category: SensorCategory
@@ -155,26 +51,21 @@ struct SensorsView: View {
     var body: some View {
         DetailPage {
             VStack(alignment: .leading, spacing: 16) {
-                if let g = store.snapshot?.gpu {
-                    StatStrip {
-                        BigStat(title: "GPU", value: Fmt.percent(g.utilization), color: theme.gpu)
-                        if let r = g.rendererUtilization { BigStat(title: "Renderer", value: Fmt.percent(r)) }
-                        if let t = g.tilerUtilization { BigStat(title: "Tiler", value: Fmt.percent(t)) }
-                        if let used = g.memoryUsed { BigStat(title: "GPU memory in use", value: Fmt.bytes(used)) }
-                        Spacer()
-                    }
-                    Panel(g.coreCount.map { "\(g.name) · \($0)-core GPU" } ?? g.name, symbol: "cube.transparent") {
-                        HistoryChart(series: [ChartSeries(name: "Utilization", color: theme.gpu, history: store.gpu)],
-                                     maxY: 1) { Fmt.percent($0, digits: 0) }
-                            .frame(height: 160)
-                    }
-                }
-
                 let groups = SensorGroup.make(store.snapshot?.sensors ?? [])
                 if groups.isEmpty {
                     EmptyState(title: "No Temperature Sensors", symbol: "thermometer.slash",
                                message: "This Mac doesn't expose temperature sensors to apps.")
                 } else {
+                    StatStrip {
+                        if let hottest = (store.snapshot?.sensors ?? []).max(by: { $0.celsius < $1.celsius }) {
+                            BigStat(title: "Hottest · \(hottest.name)", value: Fmt.temperature(hottest.celsius, fahrenheit: fahrenheit),
+                                    color: temperatureColor(hottest.celsius, theme))
+                        }
+                        ForEach(groups) { group in
+                            BigStat(title: "\(group.category.rawValue) max", value: Fmt.temperature(group.max, fahrenheit: fahrenheit))
+                        }
+                        Spacer()
+                    }
                     VStack(spacing: 10) {
                         ForEach(groups) { group in
                             Panel(group.category.rawValue, symbol: symbol(group.category), expanded: expanded(group.category)) {
