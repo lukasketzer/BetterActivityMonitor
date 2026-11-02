@@ -13,7 +13,7 @@ struct BetterActivityMonitorApp: App {
                 .frame(minWidth: 900, minHeight: 560)
                 // Widgets link to betteractivitymonitor://<section>.
                 .onOpenURL { url in
-                    if let section = url.host().flatMap(AppSection.init(rawValue:)) { store.section = section }
+                    if let section = url.host().flatMap(AppSection.resolve) { store.section = section }
                 }
         }
         .handlesExternalEvents(matching: ["*"])
@@ -66,9 +66,11 @@ struct AppCommands: Commands {
     var body: some Commands {
         CommandGroup(after: .sidebar) {
             Divider()
+            // Don't make this list depend on an @AppStorage setting (e.g. the hidden sidebar pages): that sent
+            // SwiftUI into a permanent re-evaluation loop that pegged a core and froze the app.
             ForEach(Array(AppSection.allCases.enumerated()), id: \.element) { index, section in
                 Button(section.title) { store.section = section }
-                    .keyboardShortcut(AppSection.shortcut(index: index), modifiers: .command)
+                    .keyboardShortcut(AppSection.shortcut(index: index).map { KeyboardShortcut($0, modifiers: .command) })
             }
             Divider()
             Picker("Update Interval", selection: milliseconds) {

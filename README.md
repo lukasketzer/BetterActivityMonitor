@@ -23,7 +23,7 @@ plus a fast process list that lets you find, inspect and stop any app.
 
 <br>
 
-<img src="docs/screenshots/overview.png" alt="Overview: CPU, GPU, memory, network, disk and sensor cards above the process list">
+<img src="docs/screenshots/overview.png" alt="Overview: rings for CPU, GPU, memory, storage and battery, and network and disk activity">
 
 </div>
 
@@ -36,8 +36,8 @@ plus a fast process list that lets you find, inspect and stop any app.
 
 ## Features
 
-- **Everything on one screen**: the Overview puts CPU, GPU, memory, network, disks and temperatures above a live
-  list of what's running. Pick the cards you want to see.
+- **See how your Mac is doing at a glance**: the Overview shows CPU, GPU, memory and temperature as
+  rings and graphs network and disk activity. Pick what it shows.
 - **Find and control any process**: sort by what's using the most, search as you type, or show just your apps.
   See which process started which in a tree view. Quit, force quit or pause a process, change its priority,
   or open it for a closer look.
@@ -114,8 +114,8 @@ These need no permission at all:
   sensors may be missing on yours. Please [report it](https://github.com/lukasketzer/BetterActivityMonitor/issues/new).
 - **Network connections** come from the system's `nettop` tool, which works without root. It runs only while a
   Network page or network column that needs it is open.
-- **Desktop widgets** run sandboxed. They share one day of history with the app through an App Group container on
-  your Mac, so their graphs keep going after you quit the app.
+- **Desktop widgets** run sandboxed and take their own reading on each refresh. While the app runs it asks
+  WidgetKit to refresh them every few minutes.
 
 ## Roadmap
 

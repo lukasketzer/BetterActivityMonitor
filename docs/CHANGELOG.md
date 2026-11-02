@@ -6,6 +6,33 @@ tagged version into the GitHub Release notes; nightly builds show the `Unrelease
 
 ## [Unreleased]
 
+### Added
+
+- Settings ▸ General ▸ Sidebar lets you choose which pages appear in the sidebar. The Temperatures page is off by default.
+
+- Press `/` in the process list to jump into the search field.
+- New System page in the style of About This Mac: the Mac's name and macOS version above its hardware and
+  software details (chip, memory, disk, display, battery, kernel, uptime, address). The CPU temperature chart and fans moved there from the CPU and Temperatures pages.
+- The Cores panel on the CPU page, the Virtual Memory panel on the Memory page and each sensor list on the Temperatures page are now
+  collapsed by default and sit at the bottom of their page as compact rows. Click the header to expand one; the app remembers which are open.
+
+### Changed
+
+- "GPU & Sensors" is split into a GPU page (load, renderer, tiler, memory, temperature) and a Temperatures page (all sensors, grouped by component).
+
+- A calmer Overview: rings show CPU, GPU, memory, storage (startup disk) and battery, and two cards graph network and disk activity. Click any of them for the details. The
+  process list moved off the Overview; it stays on the Processes page.
+- Battery and Energy are one page, Battery & Energy. Links to the old Battery page open it.
+- Lists keep their height while their contents change: Top Apps, Top CPU, Top Memory, Top Disk Activity, Power by App,
+  Preventing Sleep, Interfaces, Volumes and Devices reserve room for a fixed number of
+  rows and scroll past it, so the panels below no longer jump.
+
+### Removed
+
+- The menu bar popover no longer lists top processes. Their per-core CPU percentages didn't match the total above them.
+- Widget history: the History Graph and Activity Graphs widgets are gone, System Overview shows level bars instead of
+  charts (it replaces System Stats), and the app no longer writes history to the shared App Group container.
+
 ## [0.2.0] - 2026-11-01
 
 ### Added

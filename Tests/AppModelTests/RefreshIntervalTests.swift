@@ -30,9 +30,38 @@ final class RefreshIntervalTests: XCTestCase {
 
 final class SectionShortcutTests: XCTestCase {
     func testSectionsGetCommandDigits() {
-        XCTAssertEqual(AppSection.allCases.count, 9)
+        XCTAssertEqual(AppSection.allCases.count, 10)
         XCTAssertEqual(AppSection.shortcut(index: 0), KeyEquivalent("1"))
         XCTAssertEqual(AppSection.shortcut(index: 8), KeyEquivalent("9"))
         XCTAssertEqual(AppSection.shortcut(index: 9), KeyEquivalent("0"), "a tenth section must not trap")
+        XCTAssertNil(AppSection.shortcut(index: 10), "sections past the tenth have no digit left")
+    }
+}
+
+final class SectionResolveTests: XCTestCase {
+    func testOldBatteryLinksOpenBatteryAndEnergy() {
+        // Widgets still link to betteractivitymonitor://battery.
+        XCTAssertEqual(AppSection.resolve("battery"), .energy)
+        XCTAssertEqual(AppSection.resolve("energy"), .energy)
+        XCTAssertEqual(AppSection.resolve("disks"), .disks)
+        XCTAssertNil(AppSection.resolve("nope"))
+    }
+
+    func testStoredBatteryVisibilityIsDropped() {
+        // The merged page follows the old Energy setting, not the old Battery one.
+        XCTAssertEqual(AppSection.hidden("battery"), [])
+        XCTAssertEqual(AppSection.hidden("battery,energy"), [.energy])
+    }
+}
+
+final class SidebarVisibilityTests: XCTestCase {
+    func testTemperaturesIsHiddenByDefault() {
+        XCTAssertEqual(AppSection.hidden(AppSection.defaultHidden), [.sensors])
+        XCTAssertFalse(AppSection.visible(hidden: AppSection.defaultHidden).contains(.sensors))
+    }
+
+    func testOverviewCannotBeHiddenAndUnknownValuesAreIgnored() {
+        XCTAssertEqual(AppSection.hidden("overview,bogus,gpu"), [.gpu])
+        XCTAssertEqual(AppSection.visible(hidden: "").count, AppSection.allCases.count)
     }
 }

@@ -466,9 +466,27 @@ final class ProcessNSTableView: NSTableView {
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 51 || event.keyCode == 117 {  // delete / forward delete
             MainActor.assumeIsolated { controller?.quitSelection() }
+        } else if event.charactersIgnoringModifiers == "/",
+                  event.modifierFlags.isDisjoint(with: [.command, .control, .option]),
+                  focusSearchField() {
+            // "/" jumps into the toolbar search field, like in vim, less and GitHub.
         } else {
             super.keyDown(with: event)
         }
+    }
+
+    /// Moves keyboard focus to the window's toolbar search field. Returns false if there is none.
+    private func focusSearchField() -> Bool {
+        guard let window else { return false }
+        let field = window.toolbar?.items.lazy.compactMap { ($0 as? NSSearchToolbarItem)?.searchField }.first
+            ?? window.contentView?.superview.flatMap { Self.findSearchField(in: $0) }
+        guard let field else { return false }
+        return window.makeFirstResponder(field)
+    }
+
+    private static func findSearchField(in view: NSView) -> NSSearchField? {
+        if let field = view as? NSSearchField { return field }
+        return view.subviews.lazy.compactMap { findSearchField(in: $0) }.first
     }
 }
 

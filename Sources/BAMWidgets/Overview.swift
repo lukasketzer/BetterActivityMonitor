@@ -2,11 +2,11 @@ import SwiftUI
 import SystemKit
 import WidgetKit
 
-/// Everything at a glance in the two biggest sizes: CPU, GPU and memory with their day of history, plus
-/// disks and battery.
+/// Everything at a glance in the two biggest sizes: CPU, GPU, memory, disks and battery as current numbers
+/// and level bars.
 struct OverviewWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "Overview", provider: OverviewProvider()) { entry in
+        StaticConfiguration(kind: "Overview", provider: SystemProvider()) { entry in
             OverviewView(entry: entry).containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("System Overview")
@@ -15,40 +15,11 @@ struct OverviewWidget: Widget {
     }
 }
 
-/// The same overview with level bars instead of history charts.
-struct StatsOverviewWidget: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "OverviewStats", provider: OverviewProvider()) { entry in
-            OverviewView(entry: entry, showsHistory: false).containerBackground(.fill.tertiary, for: .widget)
-        }
-        .configurationDisplayName("System Stats")
-        .description("CPU, GPU, memory, disks and battery as current numbers and bars, without history.")
-        .supportedFamilies([.systemLarge, .systemExtraLarge])
-    }
-}
-
-struct OverviewProvider: TimelineProvider {
-    func placeholder(in context: Context) -> GraphEntry {
-        GraphEntry(system: .placeholder, metrics: [], samples: HistoryStore.placeholder)
-    }
-
-    func getSnapshot(in context: Context, completion: @escaping (GraphEntry) -> Void) {
-        completion(graphEntry(metrics: [], context: context, record: false))
-    }
-
-    func getTimeline(in context: Context, completion: @escaping (Timeline<GraphEntry>) -> Void) {
-        let entry = graphEntry(metrics: [], context: context, record: true)
-        completion(Timeline(entries: [entry], policy: .after(.now.addingTimeInterval(15 * 60))))
-    }
-}
-
 struct OverviewView: View {
-    var entry: GraphEntry
-    /// False for System Stats: level bars instead of the day's history.
-    var showsHistory = true
+    var entry: SystemEntry
     @Environment(\.widgetFamily) private var family
 
-    private var system: SystemEntry { entry.system }
+    private var system: SystemEntry { entry }
     private var wide: Bool { family == .systemExtraLarge }
 
     var body: some View {
@@ -80,26 +51,18 @@ struct OverviewView: View {
                 Spacer()
                 Text("Load \(load(0))").font(.caption2).foregroundStyle(.secondary).monospacedDigit()
             }
-            if showsHistory {
-                MetricChart(metric: .cpu, samples: entry.samples, showAxis: wide)
-            } else {
-                CapacityBar(fraction: system.cpu, color: WidgetColor.cpu)
-                Spacer(minLength: 0)
-                Text("Load \(load(0))  \(load(1))  \(load(2))")
-                    .font(.caption2).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
-            }
+            CapacityBar(fraction: system.cpu, color: WidgetColor.cpu)
+            Spacer(minLength: 0)
+            Text("Load \(load(0))  \(load(1))  \(load(2))")
+                .font(.caption2).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
         }
     }
 
     private var gpuTile: some View {
-        Tile(title: "GPU", symbol: "cube.transparent", color: WidgetColor.gpu, section: "sensors") {
+        Tile(title: "GPU", symbol: "cube.transparent", color: WidgetColor.gpu, section: "gpu") {
             ValueWithUnit(metric: .gpu, entry: system, size: 28)
-            if showsHistory {
-                MetricChart(metric: .gpu, samples: entry.samples, available: system.gpu != nil, showAxis: wide)
-            } else {
-                CapacityBar(fraction: system.gpu ?? 0, color: WidgetColor.gpu)
-                Spacer(minLength: 0)
-            }
+            CapacityBar(fraction: system.gpu ?? 0, color: WidgetColor.gpu)
+            Spacer(minLength: 0)
         }
     }
 
@@ -111,27 +74,10 @@ struct OverviewView: View {
                 Text("of \(WidgetFmt.bytes(system.memTotal))").font(.caption2).foregroundStyle(.secondary)
             }
             MemoryBar(entry: system, height: 6)
-            if wide || !showsHistory {
-                HStack(spacing: 10) {
-                    ForEach(system.memoryParts, id: \.name) { part in
-                        HStack(spacing: 3) {
-                            Circle().fill(part.color).frame(width: 6, height: 6)
-                            Text(part.name).foregroundStyle(.secondary)
-                            Text(WidgetFmt.bytes(part.value)).monospacedDigit()
-                        }
-                    }
-                }
-                .font(.system(size: 9))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            }
-            if showsHistory {
-                MetricChart(metric: .memory, samples: entry.samples, showAxis: wide, memoryTotal: system.memTotal)
-            } else {
-                Spacer(minLength: 0)
-                Text(system.swapUsed > 0 ? "Swap \(WidgetFmt.bytes(system.swapUsed))" : "No swap used")
-                    .font(.caption2).foregroundStyle(.secondary)
-            }
+            MemoryLegend(entry: system)
+            Spacer(minLength: 0)
+            Text(system.swapUsed > 0 ? "Swap \(WidgetFmt.bytes(system.swapUsed))" : "No swap used")
+                .font(.caption2).foregroundStyle(.secondary)
         }
     }
 
@@ -159,7 +105,7 @@ struct OverviewView: View {
     @ViewBuilder private var batteryTile: some View {
         if let b = system.battery {
             Tile(title: "Battery", symbol: b.isCharging ? "bolt.fill" : "battery.75percent",
-                 color: WidgetColor.battery, section: "battery") {
+                 color: WidgetColor.battery, section: "energy") {
                 HStack(spacing: 10) {
                     Ring(fraction: b.charge, color: WidgetColor.battery, lineWidth: 7)
                         .frame(width: 44, height: 44)
@@ -186,7 +132,7 @@ struct OverviewView: View {
         }
     }
 
-    /// Battery in one line, so the large size has room for the GPU graph.
+    /// Battery in one line, so the large size has room for the other tiles.
     private var footer: some View {
         HStack(spacing: 6) {
             if let b = system.battery {
@@ -253,6 +199,5 @@ private struct Tile<Content: View>: View {
     }
 }
 
-private let previewEntry = GraphEntry(system: .placeholder, metrics: [], samples: HistoryStore.placeholder)
-#Preview("Overview", as: .systemLarge) { OverviewWidget() } timeline: { previewEntry }
-#Preview("Overview", as: .systemExtraLarge) { OverviewWidget() } timeline: { previewEntry }
+#Preview("Overview", as: .systemLarge) { OverviewWidget() } timeline: { SystemEntry.placeholder }
+#Preview("Overview", as: .systemExtraLarge) { OverviewWidget() } timeline: { SystemEntry.placeholder }

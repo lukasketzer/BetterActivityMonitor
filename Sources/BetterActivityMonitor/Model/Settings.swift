@@ -9,6 +9,10 @@ enum SettingsKey {
     static let backgroundGradient = "backgroundGradient"
     static let fahrenheit = "fahrenheit"
     static let cpuPerCore = "cpuPerCore"
+    static let cpuCoresExpanded = "cpu.coresExpanded"
+    static let sidebarHidden = "sidebar.hidden"
+    static let sensorsExpanded = "sensors.expanded"
+    static let memoryVirtualExpanded = "memory.virtualExpanded"
     static let useRegex = "useRegex"
     static let confirmKill = "confirmKill"
     static let showMenuBarExtra = "showMenuBarExtra"
@@ -20,9 +24,9 @@ enum SettingsKey {
     static let overviewMemory = "overview.memory"
     static let overviewNetwork = "overview.network"
     static let overviewDisks = "overview.disks"
-    static let overviewSensors = "overview.sensors"
+    static let overviewStorage = "overview.storage"
+    static let overviewBattery = "overview.battery"
     static let overviewGPU = "overview.gpu"
-    static let overviewProcesses = "overview.processes"
     static let treeView = "treeView"
     static let processScope = "processScope"
     static let networkPage = "network.page"
@@ -52,6 +56,7 @@ enum Defaults {
             SettingsKey.graphStyle: GraphStyle.area.rawValue,
             SettingsKey.backgroundGradient: true,
             SettingsKey.fahrenheit: false,
+            SettingsKey.sidebarHidden: AppSection.defaultHidden,
             SettingsKey.cpuPerCore: true,
             SettingsKey.useRegex: false,
             SettingsKey.confirmKill: true,
@@ -64,9 +69,9 @@ enum Defaults {
             SettingsKey.overviewMemory: true,
             SettingsKey.overviewNetwork: true,
             SettingsKey.overviewDisks: true,
-            SettingsKey.overviewSensors: true,
+            SettingsKey.overviewStorage: true,
+            SettingsKey.overviewBattery: true,
             SettingsKey.overviewGPU: true,
-            SettingsKey.overviewProcesses: true,
             SettingsKey.freezeDuringResize: true,
             SettingsKey.treeView: false,
             SettingsKey.processScope: ProcessScope.all.rawValue,

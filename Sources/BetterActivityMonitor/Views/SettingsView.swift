@@ -1,4 +1,22 @@
 import SwiftUI
+import AppKit
+
+/// Keeps the Settings window above the main window. SwiftUI's window ordering otherwise lets the main window
+/// (which redraws on every sample) come to the front and cover Settings.
+private struct KeepWindowInFront: NSViewRepresentable {
+    final class Anchor: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            window.level = .floating
+            // Floating windows would otherwise stay on screen over other apps; hide with the app instead.
+            window.hidesOnDeactivate = true
+        }
+    }
+
+    func makeNSView(context: Context) -> Anchor { Anchor() }
+    func updateNSView(_ view: Anchor, context: Context) {}
+}
 
 struct SettingsView: View {
     var body: some View {
@@ -10,14 +28,29 @@ struct SettingsView: View {
         }
         .frame(width: 520)
         .scenePadding()
+        .background(KeepWindowInFront())
     }
 }
 
 private struct GeneralSettings: View {
+    @Environment(SystemStore.self) private var store
     @AppStorage(SettingsKey.refreshInterval) private var interval = 1.0
     @AppStorage(SettingsKey.historyLength) private var history = 120
     @AppStorage(SettingsKey.fahrenheit) private var fahrenheit = false
     @AppStorage(SettingsKey.freezeDuringResize) private var freezeDuringResize = true
+    @AppStorage(SettingsKey.sidebarHidden) private var hiddenSections = AppSection.defaultHidden
+
+    private func shown(_ section: AppSection) -> Binding<Bool> {
+        Binding {
+            !AppSection.hidden(hiddenSections).contains(section)
+        } set: { on in
+            var hidden = AppSection.hidden(hiddenSections)
+            if on { hidden.remove(section) } else { hidden.insert(section) }
+            // Don't leave the detail pane on a page whose sidebar entry just disappeared.
+            if !on, store.section == section { store.section = .overview }
+            hiddenSections = AppSection.allCases.filter(hidden.contains).map(\.rawValue).joined(separator: ",")
+        }
+    }
 
     private var milliseconds: Binding<Int> {
         Binding { RefreshInterval.nearestPreset(Int((interval * 1000).rounded())) } set: { RefreshInterval.set($0) }
@@ -38,6 +71,13 @@ private struct GeneralSettings: View {
                 Text("Fahrenheit").tag(true)
             }
             .pickerStyle(.segmented)
+            Section("Sidebar") {
+                ForEach(AppSection.hideable) { section in
+                    Toggle(isOn: shown(section)) { Label(section.title, systemImage: section.symbol) }
+                }
+                Text("Choose which pages appear in the sidebar. Overview is always shown. Temperatures is off by default.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Toggle("Freeze content while resizing the window", isOn: $freezeDuringResize)
             Text("Keeps the page still while you drag the window edge and lays it out once when you let go. Resizing stays smooth; turn it off to see the layout adapt live.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -124,6 +164,8 @@ private struct MenuBarSettings: View {
     var body: some View {
         Form {
             Toggle("Show in menu bar", isOn: $show)
+            // Only the options below are greyed out; the toggle itself must stay usable to turn this back on.
+            Group {
             Section {
                 MenuBarPreview(glyph: MenuBarGlyph(readings: store.menuBarReadings(items.enabled, fahrenheit: fahrenheit),
                                                    style: style, colored: colored, symbols: symbols, theme: Theme.named(themeID)))
@@ -155,9 +197,10 @@ private struct MenuBarSettings: View {
                 Text("Drag to reorder. Network shows download over upload and has no ring.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            }
+            .disabled(!show)
         }
         .formStyle(.grouped)
-        .disabled(!show)
     }
 
     private func isAvailable(_ metric: MenuBarMetric) -> Bool {

@@ -7,43 +7,79 @@ struct Panel<Content: View, Accessory: View>: View {
     var symbol: String
     /// Section the title navigates to when clicked.
     var destination: AppSection?
+    /// When set, the panel is a disclosure: clicking the header shows or hides the content.
+    var expanded: Binding<Bool>?
     @ViewBuilder var accessory: Accessory
     @ViewBuilder var content: Content
     @State private var auditKey = UUID()
 
     init(_ title: String, symbol: String, destination: AppSection? = nil,
+         expanded: Binding<Bool>? = nil,
          @ViewBuilder accessory: () -> Accessory = { EmptyView() }, @ViewBuilder content: () -> Content) {
         self.title = title
         self.symbol = symbol
         self.destination = destination
+        self.expanded = expanded
         self.accessory = accessory()
         self.content = content()
     }
 
+    private var isCollapsed: Bool { expanded?.wrappedValue == false }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                if let destination {
+            if let expanded {
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) { expanded.wrappedValue.toggle() }
+                } label: {
+                    headerRow(chevron: true).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(expanded.wrappedValue ? "Hide \(title)" : "Show \(title)")
+                .accessibilityLabel(title)
+                .accessibilityValue(expanded.wrappedValue ? "Expanded" : "Collapsed")
+            } else if let destination {
+                HStack(spacing: 6) {
                     Button { store.section = destination } label: { header }
                         .buttonStyle(.plain)
                         .help("Show \(title) details")
-                } else {
-                    header
+                    trailing
                 }
-                Spacer(minLength: 4)
-                accessory
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+            } else {
+                headerRow(chevron: false)
             }
-            content
+            if !isCollapsed { content }
         }
         .layoutAudit(title, key: auditKey, content: true)
-        .padding(14)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, isCollapsed ? 11 : 14)
+        // A collapsed disclosure keeps its compact height instead of stretching to its neighbours.
+        .frame(maxWidth: .infinity, maxHeight: isCollapsed ? nil : .infinity, alignment: .topLeading)
         .glassCard()
         .layoutAudit(title, key: auditKey)
+    }
+
+    private func headerRow(chevron: Bool) -> some View {
+        HStack(spacing: 6) {
+            header
+            trailing
+            if chevron, let expanded {
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
+                    .rotationEffect(.degrees(expanded.wrappedValue ? 90 : 0))
+                    .frame(width: 14, height: 14)
+            }
+        }
+    }
+
+    @ViewBuilder private var trailing: some View {
+        Spacer(minLength: 4)
+        accessory
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .font(.callout)
+            .foregroundStyle(.secondary)
     }
 
     private var header: some View {
@@ -236,5 +272,92 @@ struct DetailPage<Content: View>: View {
             GlassGroup(spacing: 16) { content }
         }
         .background(AmbientBackground())
+    }
+}
+
+/// Overview tile: one headline value, one short caption and a history chart (the network and disk cards).
+struct OverviewTile<Chart: View>: View {
+    var title: String
+    var symbol: String
+    var destination: AppSection
+    var value: String
+    var caption: String
+    var badge: String? = nil
+    @ViewBuilder var chart: Chart
+
+    var body: some View {
+        Panel(title, symbol: symbol, destination: destination) {
+            if let badge { Text(badge).monospacedDigit() }
+        } content: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 24, weight: .semibold).monospacedDigit())
+                    .contentTransition(.numericText())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text(caption)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            chart
+                .frame(minHeight: 120)
+                .padding(.top, 4)
+        }
+    }
+}
+
+/// A list that always takes the height of `rows` rows, so its panel doesn't grow and shrink as items
+/// come and go between updates. Past `rows` items it scrolls when `scrolls` is set, otherwise extra items
+/// are cut. The empty state is centred in the same reserved space.
+///
+/// The row height is measured from the rows themselves (the tallest one seen); `estimatedRowHeight` is used
+/// only until a row has been laid out.
+struct StableRows<Item: Identifiable, Row: View, Empty: View>: View {
+    var items: [Item]
+    var rows: Int
+    var spacing: CGFloat = 2
+    var scrolls = false
+    var estimatedRowHeight: CGFloat = 22
+    @ViewBuilder var row: (Item) -> Row
+    @ViewBuilder var empty: () -> Empty
+
+    @State private var rowHeight: CGFloat = 0
+
+    var body: some View {
+        let unit = rowHeight > 0 ? rowHeight : estimatedRowHeight
+        let height = CGFloat(rows) * unit + CGFloat(max(rows - 1, 0)) * spacing
+        Group {
+            if items.isEmpty {
+                empty().frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if scrolls, items.count > rows {
+                ScrollView(.vertical) { list(items) }
+                    .scrollIndicators(.automatic)
+            } else {
+                list(Array(items.prefix(rows)))
+                    .frame(maxHeight: .infinity, alignment: .top)
+            }
+        }
+        .frame(height: height)
+    }
+
+    private func list(_ shown: [Item]) -> some View {
+        VStack(spacing: spacing) {
+            ForEach(shown) { item in
+                row(item)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height.rounded(.up) } action: { h in
+                        if h > rowHeight { rowHeight = h }
+                    }
+            }
+        }
+    }
+}
+
+extension StableRows where Empty == EmptyView {
+    init(items: [Item], rows: Int, spacing: CGFloat = 2, scrolls: Bool = false, estimatedRowHeight: CGFloat = 22,
+         @ViewBuilder row: @escaping (Item) -> Row) {
+        self.init(items: items, rows: rows, spacing: spacing, scrolls: scrolls, estimatedRowHeight: estimatedRowHeight,
+                  row: row, empty: { EmptyView() })
     }
 }

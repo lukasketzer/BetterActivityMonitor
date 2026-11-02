@@ -2,7 +2,7 @@
 # Measures the CPU the bundled app uses on each screen with its window frontmost.
 #   scripts/measure-screens.sh [seconds] [screen ...]      e.g. scripts/measure-screens.sh 30 overview processes
 # Extra environment for the app can be passed via APP_ENV, e.g. APP_ENV="BAM_PLAIN_SIDEBAR=1".
-# Screens: overview processes cpu memory disks network sensors battery; network pages as network:<page>
+# Screens: overview processes cpu memory disks network sensors energy; network pages as network:<page>
 # (network:connections, network:listening, network:log). Only the app's own CPU is counted: the short-lived
 # nettop runs behind the connection pages are measured by `swift run -c release sysbench nettop`.
 set -euo pipefail
@@ -10,8 +10,8 @@ cd "$(dirname "$0")/.."
 
 SECONDS_PER_SCREEN="${1:-30}"
 shift || true
-SCREENS=("${@:-overview processes cpu memory battery}")
-[[ $# -eq 0 ]] && SCREENS=(overview processes cpu memory battery)
+SCREENS=("${@:-overview processes cpu memory energy}")
+[[ $# -eq 0 ]] && SCREENS=(overview processes cpu memory energy)
 APP="build/BetterActivityMonitor.app"
 WARMUP=12
 

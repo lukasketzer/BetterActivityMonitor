@@ -5,10 +5,7 @@ import WidgetKit
 struct BAMWidgetBundle: WidgetBundle {
     var body: some Widget {
         OverviewWidget()
-        StatsOverviewWidget()
         SystemRingsWidget()
-        MetricGraphWidget()
-        ActivityGraphsWidget()
         ActivityStatsWidget()
         MemoryWidget()
         StorageWidget()
@@ -38,29 +35,26 @@ struct MemoryWidgetView: View {
         VStack(alignment: .leading, spacing: 6) {
             WidgetHeader(title: "Memory", symbol: "memorychip", color: WidgetColor.memory)
             Spacer(minLength: 0)
-            ValueWithUnit(number: WidgetFmt.gigabytes(entry.memUsed), unit: "GB", size: family == .systemSmall ? 30 : 34)
-            Text("used of \(WidgetFmt.bytes(entry.memTotal))")
-                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
-            MemoryBar(entry: entry)
             if family == .systemMedium {
-                HStack(spacing: 12) {
-                    ForEach(entry.memoryParts, id: \.name) { name, value, color in
-                        HStack(spacing: 4) {
-                            Circle().fill(color).frame(width: 7, height: 7)
-                            Text(name).foregroundStyle(.secondary)
-                            Text(WidgetFmt.bytes(value)).monospacedDigit()
-                        }
-                    }
+                // "of 48 GB" beside the number leaves room for a two-row legend.
+                HStack(alignment: .firstTextBaseline) {
+                    ValueWithUnit(number: WidgetFmt.gigabytes(entry.memUsed), unit: "GB", size: 34)
+                    Text("used of \(WidgetFmt.bytes(entry.memTotal))")
+                        .font(.caption).foregroundStyle(.secondary).monospacedDigit()
                 }
-                .font(.caption2)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                MemoryBar(entry: entry)
+                MemoryLegend(entry: entry)
                 HStack {
                     Text(entry.swapUsed > 0 ? "Swap \(WidgetFmt.bytes(entry.swapUsed))" : "No swap used")
                     Spacer()
                     UpdatedFooter(date: entry.date)
                 }
                 .font(.caption2).foregroundStyle(.secondary)
+            } else {
+                ValueWithUnit(number: WidgetFmt.gigabytes(entry.memUsed), unit: "GB", size: 30)
+                Text("used of \(WidgetFmt.bytes(entry.memTotal))")
+                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                MemoryBar(entry: entry)
             }
         }
         .opensSection("memory")
@@ -190,7 +184,7 @@ struct BatteryWidgetView: View {
                 }
             }
         }
-        .opensSection("battery")
+        .opensSection("energy")
     }
 
     private func ring(_ b: BatteryInfo) -> some View {

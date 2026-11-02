@@ -11,35 +11,34 @@ struct ActivityStatsIntent: WidgetConfigurationIntent {
 }
 
 struct ActivityStatsProvider: AppIntentTimelineProvider {
-    func placeholder(in context: Context) -> GraphEntry {
-        GraphEntry(system: .placeholder, metrics: WidgetMetric.allCases, samples: [])
+    func placeholder(in context: Context) -> MetricsEntry {
+        MetricsEntry(system: .placeholder, metrics: WidgetMetric.allCases)
     }
 
-    func snapshot(for configuration: ActivityStatsIntent, in context: Context) async -> GraphEntry {
-        graphEntry(metrics: configuration.metrics, context: context, record: false)
+    func snapshot(for configuration: ActivityStatsIntent, in context: Context) async -> MetricsEntry {
+        metricsEntry(metrics: configuration.metrics, context: context)
     }
 
-    // Still records history, so graph widgets added later start with data.
-    func timeline(for configuration: ActivityStatsIntent, in context: Context) async -> Timeline<GraphEntry> {
-        let entry = graphEntry(metrics: configuration.metrics, context: context, record: true)
+    func timeline(for configuration: ActivityStatsIntent, in context: Context) async -> Timeline<MetricsEntry> {
+        let entry = metricsEntry(metrics: configuration.metrics, context: context)
         return Timeline(entries: [entry], policy: .after(.now.addingTimeInterval(15 * 60)))
     }
 }
 
-/// Activity Graphs without the charts: one line per metric with its current value and a level bar.
+/// One line per metric with its current value and a level bar.
 struct ActivityStatsWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "ActivityStats", intent: ActivityStatsIntent.self, provider: ActivityStatsProvider()) { entry in
             ActivityStatsView(entry: entry).containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Activity Stats")
-        .description("Current numbers with level bars, without history. Edit the widget to add or remove some.")
+        .description("Current numbers with level bars. Edit the widget to add or remove some.")
         .supportedFamilies([.systemMedium, .systemLarge])
     }
 }
 
 struct ActivityStatsView: View {
-    var entry: GraphEntry
+    var entry: MetricsEntry
     @Environment(\.widgetFamily) private var family
 
     /// Chosen metrics without duplicates or unavailable ones, as many as fit the widget.
@@ -73,7 +72,6 @@ struct ActivityStatsView: View {
     }
 }
 
-private let previewEntry = GraphEntry(system: .placeholder, metrics: WidgetMetric.allCases, samples: [])
+private let previewEntry = MetricsEntry(system: .placeholder, metrics: WidgetMetric.allCases)
 #Preview("Stats", as: .systemMedium) { ActivityStatsWidget() } timeline: { previewEntry }
 #Preview("Stats", as: .systemLarge) { ActivityStatsWidget() } timeline: { previewEntry }
-#Preview("System Stats", as: .systemExtraLarge) { StatsOverviewWidget() } timeline: { previewEntry }

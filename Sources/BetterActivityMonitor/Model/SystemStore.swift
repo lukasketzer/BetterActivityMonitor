@@ -4,7 +4,7 @@ import Observation
 import SystemKit
 
 enum AppSection: String, CaseIterable, Identifiable {
-    case overview, processes, cpu, memory, disks, network, sensors, battery, energy
+    case overview, processes, cpu, memory, disks, network, gpu, sensors, energy, system
     var id: String { rawValue }
 
     var title: String {
@@ -15,15 +15,37 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .memory: "Memory"
         case .disks: "Disks"
         case .network: "Network"
-        case .sensors: "GPU & Sensors"
-        case .battery: "Battery"
-        case .energy: "Energy"
+        case .gpu: "GPU"
+        case .sensors: "Temperatures"
+        case .energy: "Battery & Energy"
+        case .system: "System"
         }
     }
 
-    /// ⌘1…⌘9, then ⌘0 for the tenth section. A two-digit `Character` would trap.
-    static func shortcut(index: Int) -> KeyEquivalent {
-        KeyEquivalent(Character(String((index + 1) % 10)))
+    /// Sections the user can hide in Settings (Overview always stays).
+    static var hideable: [AppSection] { allCases.filter { $0 != .overview } }
+    /// Hidden on a fresh install; turn on in Settings ▸ General.
+    static let defaultHidden = "sensors"
+
+    /// Sections hidden by the comma-separated raw values stored under `SettingsKey.sidebarHidden`.
+    static func hidden(_ raw: String) -> Set<AppSection> {
+        Set(raw.split(separator: ",").compactMap { AppSection(rawValue: String($0)) }).subtracting([.overview])
+    }
+
+    /// Looks a section up by id, also accepting ids of pages that were merged into another one
+    /// (the old Battery page is now part of Battery & Energy). For links and launch arguments, not for stored visibility.
+    static func resolve(_ raw: String) -> AppSection? {
+        raw == "battery" ? .energy : AppSection(rawValue: raw)
+    }
+
+    static func visible(hidden raw: String) -> [AppSection] {
+        let hidden = hidden(raw)
+        return allCases.filter { !hidden.contains($0) }
+    }
+
+    /// ⌘1…⌘9, then ⌘0 for the tenth section; later sections have no shortcut.
+    static func shortcut(index: Int) -> KeyEquivalent? {
+        index < 10 ? KeyEquivalent(Character(String((index + 1) % 10))) : nil
     }
 
     var symbol: String {
@@ -34,9 +56,10 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .memory: "memorychip"
         case .disks: "internaldrive"
         case .network: "network"
+        case .gpu: "cube.transparent"
         case .sensors: "thermometer.medium"
-        case .battery: "battery.75percent"
-        case .energy: "bolt.fill"
+        case .energy: "battery.100percent.bolt"
+        case .system: "desktopcomputer"
         }
     }
 }
@@ -141,7 +164,7 @@ final class SystemStore {
         Defaults.register()
         start()
         DebugSnapshot.store = self
-        if let start = ProcessInfo.processInfo.environment["BAM_START_SECTION"].flatMap(AppSection.init(rawValue:)) {
+        if let start = ProcessInfo.processInfo.environment["BAM_START_SECTION"].flatMap(AppSection.resolve) {
             section = start  // developer aid for per-screen profiling
         }
         let center = NSWorkspace.shared.notificationCenter
@@ -294,7 +317,7 @@ final class SystemStore {
             push(&diskWrite, s.disks.writeRate)
             push(&processPower, s.processes.reduce(0) { $0 + $1.power })
             #if WIDGETS
-            WidgetFeed.record(s, cpuHistory: cpuTotal, gpuHistory: gpu)
+            WidgetFeed.tick(s.timestamp)
             #endif
         }
 

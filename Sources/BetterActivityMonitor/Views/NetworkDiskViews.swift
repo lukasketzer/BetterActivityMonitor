@@ -3,35 +3,20 @@ import SystemKit
 
 // MARK: Network
 
+/// Network tile for the overview.
 struct NetworkPanel: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
 
     var body: some View {
-        Panel("Network", symbol: "network", destination: .network) {
-            if let n = store.snapshot?.network {
-                HStack(spacing: 8) {
-                    Label(Fmt.rate(n.rateIn), systemImage: "arrow.down").foregroundStyle(theme.netIn)
-                    Label(Fmt.rate(n.rateOut), systemImage: "arrow.up").foregroundStyle(theme.netOut)
-                }
-                .monospacedDigit()
-            }
-        } content: {
-            VStack(alignment: .leading, spacing: 6) {
-                HistoryChart(series: [
-                    ChartSeries(name: "Download", color: theme.netIn, history: store.netIn),
-                    ChartSeries(name: "Upload", color: theme.netOut, history: store.netOut, mirrored: true),
-                ], maxY: nil) { Fmt.rate($0) }
-                    .frame(minHeight: 80)
-                if let n = store.snapshot?.network {
-                    HStack {
-                        Text("Total ↓ \(Fmt.bytes(n.totalIn))").foregroundStyle(theme.netIn)
-                        Spacer()
-                        Text("↑ \(Fmt.bytes(n.totalOut))").foregroundStyle(theme.netOut)
-                    }
-                    .font(.caption.monospacedDigit())
-                }
-            }
+        let n = store.snapshot?.network
+        OverviewTile(title: "Network", symbol: "network", destination: .network,
+                     value: n.map { "↓ \(Fmt.rate($0.rateIn))" } ?? "–",
+                     caption: n.map { "↑ \(Fmt.rate($0.rateOut)) upload" } ?? "") {
+            HistoryChart(series: [
+                ChartSeries(name: "Download", color: theme.netIn, history: store.netIn),
+                ChartSeries(name: "Upload", color: theme.netOut, history: store.netOut, mirrored: true),
+            ], maxY: nil, showsYAxis: false) { Fmt.rate($0) }
         }
     }
 }
@@ -79,11 +64,10 @@ struct NetworkOverviewPage: View {
                     Panel("Interfaces", symbol: "point.3.connected.trianglepath.dotted") {
                         Toggle("Show inactive", isOn: $showInactive).toggleStyle(.checkbox)
                     } content: {
-                        VStack(spacing: 8) {
-                            ForEach(interfaces) { iface in
-                                InterfaceRow(iface: iface, isSelected: iface.name == selected) {
-                                    selected = selected == iface.name ? "" : iface.name
-                                }
+                        // Four rows tall with or without inactive interfaces; the rest scroll.
+                        StableRows(items: interfaces, rows: 4, spacing: 8, scrolls: true, estimatedRowHeight: 50) { iface in
+                            InterfaceRow(iface: iface, isSelected: iface.name == selected) {
+                                selected = selected == iface.name ? "" : iface.name
                             }
                         }
                     }
@@ -108,35 +92,30 @@ private struct TopNetworkApps: View {
         let usage = (store.snapshot?.connections?.processes ?? [])
             .filter { $0.rateIn + $0.rateOut > 0 }
             .sorted { $0.rateIn + $0.rateOut > $1.rateIn + $1.rateOut }
-            .prefix(5)
         Panel("Top Apps", symbol: "app.connected.to.app.below.fill") {
-            if usage.isEmpty {
+            // Always five rows tall: apps drop in and out every update, and the panels below shouldn't jump.
+            StableRows(items: Array(usage.prefix(5)), rows: 5, spacing: 6) { app in
+                let entry = store.process(app.pid)
+                HStack(spacing: 8) {
+                    if let icon = store.apps[app.pid]?.icon {
+                        Image(nsImage: icon).resizable().frame(width: 16, height: 16)
+                    } else {
+                        Image(systemName: "terminal").frame(width: 16, height: 16).foregroundStyle(.secondary)
+                    }
+                    // nettop cuts names to 15 characters; prefer the full name.
+                    Text(entry.map(store.displayName) ?? app.name).lineLimit(1)
+                    Spacer()
+                    Text("↓ \(Fmt.rate(app.rateIn))").foregroundStyle(theme.netIn).frame(width: 100, alignment: .trailing)
+                    Text("↑ \(Fmt.rate(app.rateOut))").foregroundStyle(theme.netOut).frame(width: 100, alignment: .trailing)
+                }
+                .font(.callout.monospacedDigit())
+                .contentShape(Rectangle())
+                .onTapGesture(count: 2) { store.reveal(app.pid) }
+                .help("Double-click to show this process")
+            } empty: {
                 Text(store.snapshot?.connections == nil ? "Measuring…" : "No app is using the network right now.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                VStack(spacing: 6) {
-                    ForEach(Array(usage)) { app in
-                        let entry = store.process(app.pid)
-                        HStack(spacing: 8) {
-                            if let icon = store.apps[app.pid]?.icon {
-                                Image(nsImage: icon).resizable().frame(width: 16, height: 16)
-                            } else {
-                                Image(systemName: "terminal").frame(width: 16, height: 16).foregroundStyle(.secondary)
-                            }
-                            // nettop cuts names to 15 characters; prefer the full name.
-                            Text(entry.map(store.displayName) ?? app.name).lineLimit(1)
-                            Spacer()
-                            Text("↓ \(Fmt.rate(app.rateIn))").foregroundStyle(theme.netIn).frame(width: 100, alignment: .trailing)
-                            Text("↑ \(Fmt.rate(app.rateOut))").foregroundStyle(theme.netOut).frame(width: 100, alignment: .trailing)
-                        }
-                        .font(.callout.monospacedDigit())
-                        .contentShape(Rectangle())
-                        .onTapGesture(count: 2) { store.reveal(app.pid) }
-                        .help("Double-click to show this process")
-                    }
-                }
             }
         }
     }
@@ -198,31 +177,25 @@ private struct InterfaceRow: View {
 
 // MARK: Disks
 
+/// Disk tile for the overview.
 struct DisksPanel: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
 
     var body: some View {
-        Panel("Disks", symbol: "internaldrive", destination: .disks) {
-            if let d = store.snapshot?.disks {
-                HStack(spacing: 8) {
-                    Text("R \(Fmt.rate(d.readRate))").foregroundStyle(theme.diskRead)
-                    Text("W \(Fmt.rate(d.writeRate))").foregroundStyle(theme.diskWrite)
-                }
-                .monospacedDigit()
-            }
-        } content: {
-            VStack(alignment: .leading, spacing: 8) {
-                if let d = store.snapshot?.disks {
-                    ForEach(d.volumes.prefix(3)) { volume in VolumeLine(volume: volume, compact: true) }
-                }
-                HistoryChart(series: [
-                    ChartSeries(name: "Read", color: theme.diskRead, history: store.diskRead),
-                    ChartSeries(name: "Write", color: theme.diskWrite, history: store.diskWrite, mirrored: true),
-                ], maxY: nil, showsYAxis: false) { Fmt.rate($0) }
-                    .frame(minHeight: 50)
-            }
+        let d = store.snapshot?.disks
+        OverviewTile(title: "Disks", symbol: "internaldrive", destination: .disks,
+                     value: d.map { "R \(Fmt.rate($0.readRate))" } ?? "–",
+                     caption: d.map { "W \(Fmt.rate($0.writeRate))" + (freeSpace($0).map { " · \($0)" } ?? "") } ?? "") {
+            HistoryChart(series: [
+                ChartSeries(name: "Read", color: theme.diskRead, history: store.diskRead),
+                ChartSeries(name: "Write", color: theme.diskWrite, history: store.diskWrite, mirrored: true),
+            ], maxY: nil, showsYAxis: false) { Fmt.rate($0) }
         }
+    }
+
+    private func freeSpace(_ d: DiskStats) -> String? {
+        d.startupVolume.map { "\(Fmt.bytes($0.available)) free" }
     }
 }
 
@@ -262,6 +235,19 @@ struct DisksView: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
 
+    private func deviceRow(_ a: String, _ b: String, _ c: String, _ d: String) -> some View {
+        deviceRow(Text(a), Text(b), Text(c), Text(d))
+    }
+
+    private func deviceRow(_ name: some View, _ read: some View, _ write: some View, _ iops: some View) -> some View {
+        HStack(spacing: 16) {
+            name.lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+            read.frame(width: 80, alignment: .leading)
+            write.frame(width: 80, alignment: .leading)
+            iops.frame(width: 90, alignment: .leading)
+        }
+    }
+
     var body: some View {
         DetailPage {
             if let d = store.snapshot?.disks {
@@ -283,31 +269,29 @@ struct DisksView: View {
                     }
 
                     Panel("Volumes", symbol: "externaldrive.connected.to.line.below") {
-                        VStack(spacing: 12) {
-                            ForEach(d.volumes) { VolumeLine(volume: $0) }
+                        // Room for three volumes so plugging in a drive doesn't push the page; more scroll.
+                        StableRows(items: d.volumes, rows: 3, spacing: 12, scrolls: true, estimatedRowHeight: 50) {
+                            VolumeLine(volume: $0)
                         }
                     }
 
                     HStack(alignment: .top, spacing: 16) {
                         Panel("Devices", symbol: "internaldrive") {
-                            Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
-                                GridRow {
-                                    Text("Device"); Text("Read/s"); Text("Write/s"); Text("IOPS r/w")
-                                }
-                                .font(.caption).foregroundStyle(.secondary)
-                                ForEach(d.devices) { dev in
-                                    GridRow {
-                                        Text(dev.bsdName)
-                                        Text(Fmt.rate(dev.readRate)).foregroundStyle(theme.diskRead)
-                                        Text(Fmt.rate(dev.writeRate)).foregroundStyle(theme.diskWrite)
-                                        Text("\(Fmt.compact(dev.readsPerSecond)) / \(Fmt.compact(dev.writesPerSecond))")
-                                    }
-                                    .font(.callout.monospacedDigit())
+                            VStack(alignment: .leading, spacing: 6) {
+                                deviceRow("Device", "Read/s", "Write/s", "IOPS r/w")
+                                    .font(.caption).foregroundStyle(.secondary)
+                                // Fixed height like the Top Disk Activity list beside it; more devices scroll.
+                                StableRows(items: d.devices, rows: 6, spacing: 6, scrolls: true) { dev in
+                                    deviceRow(Text(dev.bsdName),
+                                              Text(Fmt.rate(dev.readRate)).foregroundStyle(theme.diskRead),
+                                              Text(Fmt.rate(dev.writeRate)).foregroundStyle(theme.diskWrite),
+                                              Text("\(Fmt.compact(dev.readsPerSecond)) / \(Fmt.compact(dev.writesPerSecond))"))
+                                        .font(.callout.monospacedDigit())
                                 }
                             }
                         }
                         Panel("Top Disk Activity", symbol: "arrow.up.arrow.down") {
-                            TopProcessList(entries: store.top(by: \.diskTotalRate, count: 8)) {
+                            TopProcessList(entries: store.top(by: \.diskTotalRate, count: 8), rows: 8) {
                                 "\(Fmt.rate($0.diskReadRate)) / \(Fmt.rate($0.diskWriteRate))"
                             }
                         }

@@ -10,7 +10,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 OUT="${1:-docs/screenshots}"
-SECTIONS=(${(s:,:)${2:-overview,processes,cpu,memory,network,disks,sensors,battery}})
+SECTIONS=(${(s:,:)${2:-overview,processes,cpu,memory,network,disks,sensors,energy}})
 BIN="build/BetterActivityMonitor.app/Contents/MacOS/BetterActivityMonitor"
 SETTLE="${SETTLE:-90}"  # seconds each screen runs before the capture
 SIZE="${SIZE:-1280x820}"
