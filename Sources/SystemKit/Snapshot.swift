@@ -147,6 +147,11 @@ public struct DiskStats: Sendable {
     public var totalWritten: UInt64
 }
 
+extension DiskStats {
+    /// The volume mounted at /, or the first one listed when that isn't found.
+    public var startupVolume: Volume? { volumes.first { $0.path == "/" } ?? volumes.first }
+}
+
 // MARK: GPU / Battery / Sensors
 
 public struct GPUStats: Sendable {

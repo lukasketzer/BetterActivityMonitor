@@ -99,36 +99,37 @@ struct CPUView: View {
     }
 }
 
-/// Clickable "top N" list; clicking jumps to the process in the table.
+/// Clickable "top N" list; clicking jumps to the process in the table. Always as tall as `rows` rows.
 struct TopProcessList: View {
     @Environment(SystemStore.self) private var store
     var entries: [ProcessEntry]
+    var rows = 5
     var value: (ProcessEntry) -> String
 
     var body: some View {
-        VStack(spacing: 2) {
-            ForEach(entries) { entry in
-                Button {
-                    store.reveal(entry.pid)
-                } label: {
-                    HStack(spacing: 6) {
-                        if let icon = store.apps[entry.pid]?.icon {
-                            Image(nsImage: icon).resizable().frame(width: 16, height: 16)
-                        } else {
-                            Image(systemName: "terminal").font(.caption).frame(width: 16).foregroundStyle(.tertiary)
-                        }
-                        Text(store.displayName(entry)).lineLimit(1)
-                        Spacer()
-                        Text(value(entry)).monospacedDigit().foregroundStyle(.secondary)
+        StableRows(items: entries, rows: rows) { entry in
+            Button {
+                store.reveal(entry.pid)
+            } label: {
+                HStack(spacing: 6) {
+                    if let icon = store.apps[entry.pid]?.icon {
+                        Image(nsImage: icon).resizable().frame(width: 16, height: 16)
+                    } else {
+                        Image(systemName: "terminal").font(.caption).frame(width: 16).foregroundStyle(.tertiary)
                     }
-                    .font(.callout)
-                    .padding(.vertical, 3)
-                    .padding(.horizontal, 4)
-                    .contentShape(Rectangle())
+                    Text(store.displayName(entry)).lineLimit(1)
+                    Spacer()
+                    Text(value(entry)).monospacedDigit().foregroundStyle(.secondary)
                 }
-                .buttonStyle(HoverRowStyle())
-                .help("Show \(store.displayName(entry)) (PID \(entry.pid))")
+                .font(.callout)
+                .padding(.vertical, 3)
+                .padding(.horizontal, 4)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(HoverRowStyle())
+            .help("Show \(store.displayName(entry)) (PID \(entry.pid))")
+        } empty: {
+            Text("Measuring…").font(.callout).foregroundStyle(.secondary)
         }
     }
 }

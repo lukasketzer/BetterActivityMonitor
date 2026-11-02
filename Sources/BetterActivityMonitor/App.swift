@@ -13,7 +13,7 @@ struct BetterActivityMonitorApp: App {
                 .frame(minWidth: 900, minHeight: 560)
                 // Widgets link to betteractivitymonitor://<section>.
                 .onOpenURL { url in
-                    if let section = url.host().flatMap(AppSection.init(rawValue:)) { store.section = section }
+                    if let section = url.host().flatMap(AppSection.resolve) { store.section = section }
                 }
         }
         .handlesExternalEvents(matching: ["*"])

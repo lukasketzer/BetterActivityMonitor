@@ -4,7 +4,7 @@ import Observation
 import SystemKit
 
 enum AppSection: String, CaseIterable, Identifiable {
-    case overview, processes, cpu, memory, disks, network, gpu, sensors, battery, energy, system
+    case overview, processes, cpu, memory, disks, network, gpu, sensors, energy, system
     var id: String { rawValue }
 
     var title: String {
@@ -17,8 +17,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .network: "Network"
         case .gpu: "GPU"
         case .sensors: "Temperatures"
-        case .battery: "Battery"
-        case .energy: "Energy"
+        case .energy: "Battery & Energy"
         case .system: "System"
         }
     }
@@ -31,6 +30,12 @@ enum AppSection: String, CaseIterable, Identifiable {
     /// Sections hidden by the comma-separated raw values stored under `SettingsKey.sidebarHidden`.
     static func hidden(_ raw: String) -> Set<AppSection> {
         Set(raw.split(separator: ",").compactMap { AppSection(rawValue: String($0)) }).subtracting([.overview])
+    }
+
+    /// Looks a section up by id, also accepting ids of pages that were merged into another one
+    /// (the old Battery page is now part of Battery & Energy). For links and launch arguments, not for stored visibility.
+    static func resolve(_ raw: String) -> AppSection? {
+        raw == "battery" ? .energy : AppSection(rawValue: raw)
     }
 
     static func visible(hidden raw: String) -> [AppSection] {
@@ -53,8 +58,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .network: "network"
         case .gpu: "cube.transparent"
         case .sensors: "thermometer.medium"
-        case .battery: "battery.75percent"
-        case .energy: "bolt.fill"
+        case .energy: "battery.100percent.bolt"
         case .system: "desktopcomputer"
         }
     }
@@ -160,7 +164,7 @@ final class SystemStore {
         Defaults.register()
         start()
         DebugSnapshot.store = self
-        if let start = ProcessInfo.processInfo.environment["BAM_START_SECTION"].flatMap(AppSection.init(rawValue:)) {
+        if let start = ProcessInfo.processInfo.environment["BAM_START_SECTION"].flatMap(AppSection.resolve) {
             section = start  // developer aid for per-screen profiling
         }
         let center = NSWorkspace.shared.notificationCenter
@@ -313,7 +317,7 @@ final class SystemStore {
             push(&diskWrite, s.disks.writeRate)
             push(&processPower, s.processes.reduce(0) { $0 + $1.power })
             #if WIDGETS
-            WidgetFeed.record(s, cpuHistory: cpuTotal, gpuHistory: gpu)
+            WidgetFeed.tick(s.timestamp)
             #endif
         }
 

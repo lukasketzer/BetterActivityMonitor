@@ -114,8 +114,8 @@ These need no permission at all:
   sensors may be missing on yours. Please [report it](https://github.com/lukasketzer/BetterActivityMonitor/issues/new).
 - **Network connections** come from the system's `nettop` tool, which works without root. It runs only while a
   Network page or network column that needs it is open.
-- **Desktop widgets** run sandboxed. They share one day of history with the app through an App Group container on
-  your Mac, so their graphs keep going after you quit the app.
+- **Desktop widgets** run sandboxed and take their own reading on each refresh. While the app runs it asks
+  WidgetKit to refresh them every few minutes.
 
 ## Roadmap
 

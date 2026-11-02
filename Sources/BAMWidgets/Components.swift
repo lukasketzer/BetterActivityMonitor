@@ -11,6 +11,15 @@ enum WidgetColor {
 }
 
 enum WidgetFmt {
+    /// Short memory size for tight legends: "25.6 GB", "312 MB", one decimal at most.
+    static func shortBytes(_ value: UInt64) -> String {
+        let gb = Double(value) / Double(1 << 30)
+        if gb >= 1 {
+            return "\(gb.formatted(.number.precision(.fractionLength(gb < 100 ? 1 : 0)))) GB"
+        }
+        return "\((Double(value) / Double(1 << 20)).formatted(.number.precision(.fractionLength(0)))) MB"
+    }
+
     static func bytes(_ value: UInt64) -> String {
         Int64(value).formatted(.byteCount(style: .memory))
     }
@@ -125,6 +134,33 @@ extension SystemEntry {
     var memoryParts: [(name: String, value: UInt64, color: Color)] {
         [("App", memApp, .yellow), ("Wired", memWired, .orange),
          ("Compressed", memCompressed, .purple), ("Cached", memCached, .teal)]
+    }
+}
+
+/// The memory breakdown's legend as a 2×2 grid, so names and values fit even in a half-width tile.
+struct MemoryLegend: View {
+    var entry: SystemEntry
+    var font: Font = .caption2
+
+    var body: some View {
+        let parts = entry.memoryParts
+        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 2) {
+            ForEach(0..<2, id: \.self) { row in
+                GridRow {
+                    ForEach(parts[(row * 2)..<(row * 2 + 2)], id: \.name) { part in
+                        HStack(spacing: 4) {
+                            Circle().fill(part.color).frame(width: 6, height: 6)
+                            Text(part.name).foregroundStyle(.secondary)
+                            Spacer(minLength: 4)
+                            Text(WidgetFmt.shortBytes(part.value)).monospacedDigit()
+                        }
+                    }
+                }
+            }
+        }
+        .font(font)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
     }
 }
 

@@ -68,8 +68,7 @@ struct ContentView: View {
         case .network: NetworkView()
         case .gpu: GPUView()
         case .sensors: SensorsView()
-        case .battery: BatteryView()
-        case .energy: EnergyView()
+        case .energy: BatteryEnergyView()
         case .system: SystemView()
         }
     }
@@ -136,11 +135,9 @@ private struct Sidebar: View {
                     row(.gpu, value: store.snapshot?.gpu.map { Fmt.percent($0.utilization, digits: 0) },
                         graph: store.gpu.values, max: 1, color: theme.gpu)
                 }
-                if store.snapshot?.battery != nil, !hidden.contains(.battery) {
-                    row(.battery, value: store.snapshot?.battery.map { Fmt.percent($0.charge, digits: 0) })
-                }
                 if !hidden.contains(.energy) {
-                    row(.energy, value: store.systemPower.map(Fmt.watts),
+                    row(.energy, value: store.snapshot?.battery.map { Fmt.percent($0.charge, digits: 0) }
+                            ?? store.systemPower.map(Fmt.watts),
                         graph: store.processPower.values, max: 1, color: theme.mid)
                 }
                 if !hidden.contains(.sensors) {

@@ -62,9 +62,6 @@ struct MenuBarView: View {
                     }
                 }
 
-                Divider()
-                Text("Top processes").font(.caption).foregroundStyle(.secondary)
-                TopProcessList(entries: store.top(by: \.cpu, count: 6)) { Fmt.number($0.cpu) + "%" }
             } else {
                 ProgressView()
             }

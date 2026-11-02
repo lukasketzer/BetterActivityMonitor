@@ -24,7 +24,8 @@ enum SettingsKey {
     static let overviewMemory = "overview.memory"
     static let overviewNetwork = "overview.network"
     static let overviewDisks = "overview.disks"
-    static let overviewSensors = "overview.sensors"
+    static let overviewStorage = "overview.storage"
+    static let overviewBattery = "overview.battery"
     static let overviewGPU = "overview.gpu"
     static let treeView = "treeView"
     static let processScope = "processScope"
@@ -68,7 +69,8 @@ enum Defaults {
             SettingsKey.overviewMemory: true,
             SettingsKey.overviewNetwork: true,
             SettingsKey.overviewDisks: true,
-            SettingsKey.overviewSensors: true,
+            SettingsKey.overviewStorage: true,
+            SettingsKey.overviewBattery: true,
             SettingsKey.overviewGPU: true,
             SettingsKey.freezeDuringResize: true,
             SettingsKey.treeView: false,

@@ -6,14 +6,16 @@ struct OverviewView: View {
     @AppStorage(SettingsKey.overviewCPU) private var showCPU = true
     @AppStorage(SettingsKey.overviewGPU) private var showGPU = true
     @AppStorage(SettingsKey.overviewMemory) private var showMemory = true
-    @AppStorage(SettingsKey.overviewSensors) private var showSensors = true
+    @AppStorage(SettingsKey.overviewStorage) private var showStorage = true
+    @AppStorage(SettingsKey.overviewBattery) private var showBattery = true
     @AppStorage(SettingsKey.overviewNetwork) private var showNetwork = true
     @AppStorage(SettingsKey.overviewDisks) private var showDisks = true
 
     var body: some View {
         DetailPage {
             VStack(alignment: .leading, spacing: 28) {
-                OverviewRings(showCPU: showCPU, showGPU: showGPU, showMemory: showMemory, showTemperature: showSensors)
+                OverviewRings(showCPU: showCPU, showGPU: showGPU, showMemory: showMemory,
+                              showStorage: showStorage, showBattery: showBattery)
                 if showNetwork || showDisks {
                     HStack(alignment: .top, spacing: 16) {
                         if showNetwork { NetworkPanel() }
@@ -33,7 +35,8 @@ struct OverviewView: View {
                     Toggle("CPU", isOn: $showCPU)
                     Toggle("GPU", isOn: $showGPU)
                     Toggle("Memory", isOn: $showMemory)
-                    Toggle("Temperature", isOn: $showSensors)
+                    Toggle("Storage", isOn: $showStorage)
+                    Toggle("Battery", isOn: $showBattery)
                     Divider()
                     Toggle("Network", isOn: $showNetwork)
                     Toggle("Disks", isOn: $showDisks)
@@ -46,15 +49,15 @@ struct OverviewView: View {
     }
 }
 
-/// Activity rings for CPU, GPU, memory and temperature, each linking to its detail page.
+/// Activity rings for CPU, GPU, memory, startup-disk storage and battery, each linking to its detail page.
 private struct OverviewRings: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
-    @AppStorage(SettingsKey.fahrenheit) private var fahrenheit = false
     var showCPU: Bool
     var showGPU: Bool
     var showMemory: Bool
-    var showTemperature: Bool
+    var showStorage: Bool
+    var showBattery: Bool
 
     var body: some View {
         if let s = store.snapshot {
@@ -89,10 +92,18 @@ private struct OverviewRings: View {
             rings.append(.init(title: "Memory", value: Fmt.bytes(s.memory.used), fraction: s.memory.usedFraction,
                                caption: "of \(Fmt.bytes(s.memory.total))", color: theme.memApp, destination: .memory))
         }
-        if showTemperature, let t = store.cpuTemperatureNow {
-            // 20 °C reads as an empty ring, 100 °C as a full one.
-            rings.append(.init(title: "Temperature", value: Fmt.temperature(t, fahrenheit: fahrenheit),
-                               fraction: (t - 20) / 80, caption: "CPU", color: theme.temperature, destination: .system))
+        if showStorage, let v = s.disks.startupVolume {
+            rings.append(.init(title: "Storage", value: Fmt.bytes(v.used), fraction: v.usedFraction,
+                               caption: "of \(Fmt.bytes(v.total))", color: theme.diskRead, destination: .disks))
+        }
+        if showBattery, let b = s.battery {
+            // Like the system Batteries widget: a bolt while on power, and the ring warms up as the charge runs low.
+            let color = b.charge <= 0.1 ? theme.high : b.charge <= 0.2 ? theme.mid : theme.low
+            let caption = b.isCharged || b.isCharging || b.isPluggedIn || b.minutesRemaining == nil
+                ? batteryStatus(b) : "\(Fmt.minutes(b.minutesRemaining!)) left"
+            rings.append(.init(title: "Battery", value: Fmt.percent(b.charge, digits: 0), fraction: b.charge,
+                               caption: caption, color: color, destination: .energy,
+                               symbol: b.isPluggedIn || b.isCharging ? "bolt.fill" : nil))
         }
         return rings
     }
@@ -106,6 +117,8 @@ private struct ActivityRing: View {
         var caption: String
         var color: Color
         var destination: AppSection
+        /// Small glyph above the value, e.g. a bolt while the battery charges.
+        var symbol: String? = nil
     }
 
     var ring: Model
@@ -120,14 +133,21 @@ private struct ActivityRing: View {
                     .stroke(ring.color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                     .animation(.smooth(duration: 0.6), value: ring.fraction)
-                Text(ring.value)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded).monospacedDigit())
-                    .contentTransition(.numericText())
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .padding(.horizontal, lineWidth + 6)
+                VStack(spacing: 1) {
+                    if let symbol = ring.symbol {
+                        Image(systemName: symbol).font(.caption.weight(.bold)).foregroundStyle(ring.color)
+                    }
+                    Text(ring.value)
+                        .font(.system(size: 20, weight: .semibold, design: .rounded).monospacedDigit())
+                        .contentTransition(.numericText())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                }
+                .padding(.horizontal, lineWidth + 6)
             }
-            .frame(width: 118, height: 118)
+            // Full size when there's room; five rings in a narrow window shrink instead of spilling out.
+            .aspectRatio(1, contentMode: .fit)
+            .frame(minWidth: 84, maxWidth: 118)
             VStack(spacing: 1) {
                 Text(ring.title).font(.headline)
                 Text(ring.caption).font(.caption).foregroundStyle(.secondary)

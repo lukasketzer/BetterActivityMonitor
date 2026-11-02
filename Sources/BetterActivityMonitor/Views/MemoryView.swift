@@ -65,7 +65,7 @@ struct MemoryView: View {
                     }
 
                     Panel("Top Memory", symbol: "memorychip") {
-                        TopProcessList(entries: store.topMemory(count: 8)) { Fmt.bytes($0.memory) }
+                        TopProcessList(entries: store.topMemory(count: 8), rows: 8) { Fmt.bytes($0.memory) }
                     }
 
                     Panel("Virtual Memory", symbol: "arrow.left.arrow.right", expanded: $virtualExpanded) {

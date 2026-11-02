@@ -54,7 +54,7 @@ struct SystemView: View {
             rows.append(.init("Graphics", g.coreCount.map { "\(g.name) (\($0) cores)" } ?? g.name))
         }
         rows.append(.init("Memory", Fmt.bytes(s.memory.total)))
-        if let volume = s.disks.volumes.first(where: { $0.path == "/" }) ?? s.disks.volumes.first {
+        if let volume = s.disks.startupVolume {
             rows.append(.init("Startup disk", "\(volume.name) · \(Fmt.bytes(volume.used)) of \(Fmt.bytes(volume.total)) used"))
         }
         for (index, display) in info.displays.enumerated() {

@@ -9,7 +9,7 @@ enum ResizeBench {
     static func runIfRequested() {
         let env = ProcessInfo.processInfo.environment
         guard let reportPath = env["BAM_RESIZE_BENCH"] else { return }
-        let sections = env["BAM_SNAPSHOT_SECTIONS"].map { $0.split(separator: ",").compactMap { AppSection(rawValue: String($0)) } }
+        let sections = env["BAM_SNAPSHOT_SECTIONS"].map { $0.split(separator: ",").compactMap { AppSection.resolve(String($0)) } }
             ?? AppSection.allCases
         let frames = Int(env["BAM_RESIZE_FRAMES"] ?? "") ?? 150
         Task { @MainActor in

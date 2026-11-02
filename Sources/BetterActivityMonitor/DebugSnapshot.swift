@@ -16,7 +16,7 @@ enum DebugSnapshot {
             let parts = spec.lowercased().split(separator: "x").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
             return parts.count == 2 ? CGSize(width: parts[0], height: parts[1]) : nil
         }
-        let sections = env["BAM_SNAPSHOT_SECTIONS"].map { $0.split(separator: ",").compactMap { AppSection(rawValue: String($0)) } }
+        let sections = env["BAM_SNAPSHOT_SECTIONS"].map { $0.split(separator: ",").compactMap { AppSection.resolve(String($0)) } }
             ?? AppSection.allCases
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(4))

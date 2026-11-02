@@ -97,7 +97,6 @@ struct SystemProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SystemEntry>) -> Void) {
         let entry = SystemEntry.sample()
-        HistoryStore.record(entry)
         completion(Timeline(entries: [entry], policy: .after(.now.addingTimeInterval(15 * 60))))
     }
 }

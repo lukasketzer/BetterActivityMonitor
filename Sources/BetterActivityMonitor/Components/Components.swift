@@ -307,3 +307,57 @@ struct OverviewTile<Chart: View>: View {
         }
     }
 }
+
+/// A list that always takes the height of `rows` rows, so its panel doesn't grow and shrink as items
+/// come and go between updates. Past `rows` items it scrolls when `scrolls` is set, otherwise extra items
+/// are cut. The empty state is centred in the same reserved space.
+///
+/// The row height is measured from the rows themselves (the tallest one seen); `estimatedRowHeight` is used
+/// only until a row has been laid out.
+struct StableRows<Item: Identifiable, Row: View, Empty: View>: View {
+    var items: [Item]
+    var rows: Int
+    var spacing: CGFloat = 2
+    var scrolls = false
+    var estimatedRowHeight: CGFloat = 22
+    @ViewBuilder var row: (Item) -> Row
+    @ViewBuilder var empty: () -> Empty
+
+    @State private var rowHeight: CGFloat = 0
+
+    var body: some View {
+        let unit = rowHeight > 0 ? rowHeight : estimatedRowHeight
+        let height = CGFloat(rows) * unit + CGFloat(max(rows - 1, 0)) * spacing
+        Group {
+            if items.isEmpty {
+                empty().frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if scrolls, items.count > rows {
+                ScrollView(.vertical) { list(items) }
+                    .scrollIndicators(.automatic)
+            } else {
+                list(Array(items.prefix(rows)))
+                    .frame(maxHeight: .infinity, alignment: .top)
+            }
+        }
+        .frame(height: height)
+    }
+
+    private func list(_ shown: [Item]) -> some View {
+        VStack(spacing: spacing) {
+            ForEach(shown) { item in
+                row(item)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height.rounded(.up) } action: { h in
+                        if h > rowHeight { rowHeight = h }
+                    }
+            }
+        }
+    }
+}
+
+extension StableRows where Empty == EmptyView {
+    init(items: [Item], rows: Int, spacing: CGFloat = 2, scrolls: Bool = false, estimatedRowHeight: CGFloat = 22,
+         @ViewBuilder row: @escaping (Item) -> Row) {
+        self.init(items: items, rows: rows, spacing: spacing, scrolls: scrolls, estimatedRowHeight: estimatedRowHeight,
+                  row: row, empty: { EmptyView() })
+    }
+}

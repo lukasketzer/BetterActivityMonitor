@@ -20,8 +20,18 @@ tagged version into the GitHub Release notes; nightly builds show the `Unrelease
 
 - "GPU & Sensors" is split into a GPU page (load, renderer, tiler, memory, temperature) and a Temperatures page (all sensors, grouped by component).
 
-- A calmer Overview: rings show CPU, GPU, memory and temperature, and two cards graph network and disk activity. Click any of them for the details. The
+- A calmer Overview: rings show CPU, GPU, memory, storage (startup disk) and battery, and two cards graph network and disk activity. Click any of them for the details. The
   process list moved off the Overview; it stays on the Processes page.
+- Battery and Energy are one page, Battery & Energy. Links to the old Battery page open it.
+- Lists keep their height while their contents change: Top Apps, Top CPU, Top Memory, Top Disk Activity, Power by App,
+  Preventing Sleep, Interfaces, Volumes and Devices reserve room for a fixed number of
+  rows and scroll past it, so the panels below no longer jump.
+
+### Removed
+
+- The menu bar popover no longer lists top processes. Their per-core CPU percentages didn't match the total above them.
+- Widget history: the History Graph and Activity Graphs widgets are gone, System Overview shows level bars instead of
+  charts (it replaces System Stats), and the app no longer writes history to the shared App Group container.
 
 ## [0.2.0] - 2026-11-01
 

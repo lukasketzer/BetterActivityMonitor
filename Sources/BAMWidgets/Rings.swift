@@ -44,7 +44,6 @@ struct RingsProvider: AppIntentTimelineProvider {
 
     func timeline(for configuration: SystemRingsIntent, in context: Context) async -> Timeline<RingsEntry> {
         let entry = RingsEntry(system: .sample(), metrics: configuration.metrics)
-        HistoryStore.record(entry.system)
         return Timeline(entries: [entry], policy: .after(.now.addingTimeInterval(15 * 60)))
     }
 }
