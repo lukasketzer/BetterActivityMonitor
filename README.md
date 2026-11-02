@@ -23,7 +23,7 @@ plus a fast process list that lets you find, inspect and stop any app.
 
 <br>
 
-<img src="docs/screenshots/overview.png" alt="Overview: rings for CPU, GPU, memory and temperature, and network and disk activity">
+<img src="docs/screenshots/overview.png" alt="Overview: rings for CPU, GPU, memory, storage and battery, and network and disk activity">
 
 </div>
 
