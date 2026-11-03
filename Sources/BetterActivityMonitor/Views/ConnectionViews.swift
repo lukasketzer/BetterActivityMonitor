@@ -320,10 +320,12 @@ private struct ConnectionLogPage: View {
     @State private var query = ""
     @State private var rows: [LogRow] = []
     @State private var sortOrder = [KeyPathComparator(\LogRow.date, order: .reverse)]
+    @State private var selection: LogRow.ID?
+    @State private var showDetails = false
 
     var body: some View {
         @Bindable var store = store
-        Table(rows, sortOrder: $sortOrder) {
+        Table(rows, selection: $selection, sortOrder: $sortOrder) {
             TableColumn("Time", value: \.date) { Text($0.date, format: .dateTime.hour().minute().second()) }
                 .width(min: 70, ideal: 80)
             TableColumn("Event", value: \.opened.description) { row in
@@ -350,9 +352,16 @@ private struct ConnectionLogPage: View {
                                : "No event matches “\(query)”.")
             }
         }
+        .onChange(of: selection) { if selection != nil { showDetails = true } }
+        .inspector(isPresented: $showDetails) {
+            ConnectionLogInspector(eventID: selection) { query = $0 }
+                .inspectorColumnWidth(min: 280, ideal: 320, max: 480)
+        }
         .searchable(text: $query, placement: .toolbar, prompt: filterPrompt)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                Toggle(isOn: $showDetails) { Label("Details", systemImage: "sidebar.trailing") }
+                    .help("Show details of the selected event")
                 Toggle(isOn: $showLoopback) { Label("Loopback", systemImage: "arrow.triangle.2.circlepath") }
                     .help("Include connections within this Mac (127.0.0.1, ::1)")
                 Toggle(isOn: $store.connectionLogPaused) {

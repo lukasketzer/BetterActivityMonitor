@@ -52,7 +52,7 @@ struct MenuBarView: View {
                     switch metric {
                     case .cpu: row("CPU", Fmt.percent(s.cpu.total), values: store.cpuTotal.values, color: theme.cpu)
                     case .memory:
-                        row("Memory", "\(Fmt.bytes(s.memory.used)) · \(s.memory.pressure.label)", values: store.memUsed.values, color: theme.memApp)
+                        row("Memory", Fmt.bytes(s.memory.used), values: store.memUsed.values, color: theme.memApp)
                     case .network:
                         row("Network", "↓ \(Fmt.rate(s.network.rateIn))  ↑ \(Fmt.rate(s.network.rateOut))",
                             values: store.netIn.values, color: theme.netIn, maxValue: 0)

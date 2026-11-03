@@ -10,14 +10,6 @@ extension MemoryStats {
     }
 }
 
-private func pressureColor(_ pressure: MemoryPressure, _ theme: Theme) -> Color {
-    switch pressure {
-    case .normal: theme.low
-    case .warning: theme.mid
-    case .critical: theme.high
-    }
-}
-
 struct MemoryView: View {
     @Environment(SystemStore.self) private var store
     @Environment(\.theme) private var theme
@@ -32,7 +24,6 @@ struct MemoryView: View {
                         BigStat(title: "Physical", value: Fmt.bytes(m.total))
                         BigStat(title: "Cached files", value: Fmt.bytes(m.cached), color: theme.memCached)
                         BigStat(title: "Swap used", value: Fmt.bytes(m.swapUsed), color: theme.swap)
-                        BigStat(title: "Pressure", value: m.pressure.label, color: pressureColor(m.pressure, theme))
                         Spacer()
                     }
 
