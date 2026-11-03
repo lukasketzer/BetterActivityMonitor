@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import SystemKit
 
@@ -10,12 +11,19 @@ struct SystemView: View {
     var body: some View {
         DetailPage {
             if let s = store.snapshot {
+                let hardware = hardwareRows(s)
+                let software = softwareRows(s)
                 VStack(alignment: .leading, spacing: 16) {
                     MachineHeader(name: MachineInfo.current.host, os: MachineInfo.current.os,
-                                  symbol: s.battery != nil ? "laptopcomputer" : "desktopcomputer")
+                                  subtitle: MachineInfo.current.productName,
+                                  symbol: s.battery != nil ? "laptopcomputer" : "desktopcomputer",
+                                  thermal: ProcessInfo.processInfo.thermalState,
+                                  lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled) {
+                        copySummary(hardware: hardware, software: software)
+                    }
                     HStack(alignment: .top, spacing: 16) {
-                        InfoGroup(title: "Hardware", rows: hardwareRows(s))
-                        InfoGroup(title: "Software", rows: softwareRows(s))
+                        InfoGroup(title: "Hardware", rows: hardware)
+                        InfoGroup(title: "Software", rows: software)
                     }
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -46,7 +54,8 @@ struct SystemView: View {
     private func hardwareRows(_ s: SystemSnapshot) -> [InfoRow] {
         let info = MachineInfo.current
         var rows: [InfoRow] = [
-            .init("Model", info.model),
+            .init("Model", info.productName ?? info.model),
+            .init("Model identifier", info.model),
             .init("Chip", s.cpu.model),
             .init("Cores", coreDescription(s.cpu)),
         ]
@@ -80,11 +89,38 @@ struct SystemView: View {
             .init("User", info.user),
             .init("Shell", info.shell),
             .init("Uptime", Fmt.duration(s.cpu.uptime)),
+        ]
+        if let boot = MachineInfo.bootTime { rows.append(.init("Booted", Self.when(boot))) }
+        if let wake = MachineInfo.lastWake { rows.append(.init("Last wake", Self.when(wake))) }
+        rows += [
             .init("Load average", s.cpu.loadAverage.map { Fmt.number($0, digits: 2) }.joined(separator: "  ")),
             .init("Processes", "\(s.cpu.processCount) (\(s.cpu.threadCount) threads)"),
         ]
         if let ip = localAddress(s) { rows.append(.init("IP address", ip)) }
+        let thermal = ProcessInfo.processInfo.thermalState
+        rows.append(.init("Thermal state", thermal.label, color: thermal.color(theme)))
+        rows.append(.init("Low Power Mode", ProcessInfo.processInfo.isLowPowerModeEnabled ? "On" : "Off"))
         return rows
+    }
+
+    /// "Today 09:14", "Yesterday 22:01" or "Mon 3 Nov, 09:14".
+    private static func when(_ date: Date) -> String {
+        let time = date.formatted(date: .omitted, time: .shortened)
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) { return "Today \(time)" }
+        if calendar.isDateInYesterday(date) { return "Yesterday \(time)" }
+        return date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)) + ", " + time
+    }
+
+    private func copySummary(hardware: [InfoRow], software: [InfoRow]) {
+        let info = MachineInfo.current
+        func block(_ title: String, _ rows: [InfoRow]) -> String {
+            ([title] + rows.map { "  \($0.key): \($0.value)" }).joined(separator: "\n")
+        }
+        let text = [info.host + " — " + info.os, block("Hardware", hardware), block("Software", software)]
+            .joined(separator: "\n\n")
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
 
     private func coreDescription(_ cpu: CPUStats) -> String {
@@ -114,12 +150,37 @@ struct InfoRow: Identifiable {
     }
 }
 
+extension ProcessInfo.ThermalState {
+    var label: String {
+        switch self {
+        case .nominal: "Nominal"
+        case .fair: "Fair"
+        case .serious: "Serious (throttling)"
+        case .critical: "Critical (throttling)"
+        @unknown default: "Unknown"
+        }
+    }
+
+    func color(_ theme: Theme) -> Color? {
+        switch self {
+        case .nominal: nil
+        case .fair: theme.mid
+        default: theme.high
+        }
+    }
+}
+
 /// Big Mac symbol with its name and macOS version, like the top of About This Mac.
 struct MachineHeader: View {
     @Environment(\.theme) private var theme
     var name: String
     var os: String
+    var subtitle: String?
     var symbol: String
+    var thermal: ProcessInfo.ThermalState
+    var lowPower: Bool
+    var copy: () -> Void
+    @State private var copied = false
 
     var body: some View {
         HStack(spacing: 20) {
@@ -132,13 +193,39 @@ struct MachineHeader: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(name).font(.largeTitle.weight(.semibold))
                 Text(os).font(.title3).foregroundStyle(.secondary)
+                if let subtitle { Text(subtitle).font(.callout).foregroundStyle(.secondary) }
             }
             Spacer(minLength: 0)
+            VStack(alignment: .trailing, spacing: 8) {
+                HStack(spacing: 6) {
+                    if lowPower { badge("Low Power", symbol: "leaf.fill", color: theme.mid) }
+                    badge(thermal == .nominal ? "Thermals OK" : "Thermals " + thermal.label,
+                          symbol: "thermometer.medium", color: thermal.color(theme) ?? theme.low)
+                }
+                Button {
+                    copy()
+                    copied = true
+                    Task { try? await Task.sleep(for: .seconds(1.5)); copied = false }
+                } label: {
+                    Label(copied ? "Copied" : "Copy System Info", systemImage: copied ? "checkmark" : "doc.on.doc")
+                }
+                .controlSize(.small)
+                .help("Copy the hardware and software details as plain text")
+            }
         }
         .padding(.horizontal, 22)
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard(cornerRadius: 22)
+    }
+
+    private func badge(_ text: String, symbol: String, color: Color) -> some View {
+        Label(text, systemImage: symbol)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(color.opacity(0.15), in: Capsule())
     }
 }
 

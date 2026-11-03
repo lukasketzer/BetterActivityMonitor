@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import IOKit
 
 /// Facts about this Mac that don't change while the app runs (the live numbers come from the snapshot).
 struct MachineInfo {
@@ -7,6 +8,9 @@ struct MachineInfo {
     var host: String
     var os: String
     var kernel: String
+    /// Marketing name, e.g. "MacBook Pro (16-inch, Nov 2024)"; nil when the registry doesn't have one.
+    var productName: String?
+    /// Raw model identifier, e.g. "Mac16,5".
     var model: String
     var shell: String
     var displays: [String]
@@ -25,6 +29,7 @@ struct MachineInfo {
             host: Host.current().localizedName ?? ProcessInfo.processInfo.hostName,
             os: os,
             kernel: sysctlString("kern.osrelease").map { "Darwin \($0)" } ?? "Darwin",
+            productName: productName(),
             model: sysctlString("hw.model") ?? "Mac",
             shell: shell,
             displays: NSScreen.screens.map { screen in
@@ -32,6 +37,33 @@ struct MachineInfo {
                 let size = "\(Int(screen.frame.width * scale))×\(Int(screen.frame.height * scale))"
                 return scale > 1 ? "\(size) @ \(Int(scale))x" : size
             })
+    }
+
+    /// When the Mac last booted (`kern.boottime`).
+    static var bootTime: Date? { sysctlDate("kern.boottime") }
+
+    /// When the Mac last woke from sleep, or nil if it hasn't slept since booting.
+    static var lastWake: Date? {
+        guard let wake = sysctlDate("kern.waketime"), let boot = bootTime, wake > boot else { return nil }
+        return wake
+    }
+
+    /// Apple silicon Macs carry the "About This Mac" name in the device tree's `/product` node.
+    private static func productName() -> String? {
+        let entry = IORegistryEntryFromPath(kIOMainPortDefault, "IODeviceTree:/product")
+        guard entry != 0 else { return nil }
+        defer { IOObjectRelease(entry) }
+        guard let data = IORegistryEntryCreateCFProperty(entry, "product-name" as CFString, kCFAllocatorDefault, 0)?
+            .takeRetainedValue() as? Data else { return nil }
+        let name = String(decoding: data.prefix { $0 != 0 }, as: UTF8.self).trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? nil : name
+    }
+
+    private static func sysctlDate(_ name: String) -> Date? {
+        var value = timeval()
+        var size = MemoryLayout<timeval>.size
+        guard sysctlbyname(name, &value, &size, nil, 0) == 0, value.tv_sec > 0 else { return nil }
+        return Date(timeIntervalSince1970: TimeInterval(value.tv_sec) + TimeInterval(value.tv_usec) / 1_000_000)
     }
 
     private static func sysctlString(_ name: String) -> String? {
