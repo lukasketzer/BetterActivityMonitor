@@ -42,7 +42,7 @@ struct ActivityStatsWidget: Widget {
 
 struct ActivityStatsView: View {
     var entry: MetricsEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.resolvedWidgetFamily) private var family
 
     /// Chosen metrics without duplicates or unavailable ones, as many as fit the widget.
     private var metrics: [WidgetMetric] {
