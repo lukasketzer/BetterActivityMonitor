@@ -6,6 +6,15 @@ tagged version into the GitHub Release notes; nightly builds show the `Unrelease
 
 ## [Unreleased]
 
+0.4.0 was never published, because its release build failed. 0.4.1 is the first release with the 0.4.0 changes
+listed below: the menu bar without the window, Open at login, GPU use by process, the System page details and the
+network log inspector.
+
+### Fixed
+
+- GPU by Process no longer lists processes that opened the GPU but never used it. On virtual Macs, where every
+  process reports no GPU time, the list stays empty.
+
 ## [0.4.0] - 2026-11-04
 
 ### Added
