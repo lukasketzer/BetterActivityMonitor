@@ -160,10 +160,20 @@ private struct MenuBarSettings: View {
     @AppStorage(SettingsKey.menuBarSymbols) private var symbols = true
     @AppStorage(SettingsKey.theme) private var themeID = Theme.system.id
     @AppStorage(SettingsKey.fahrenheit) private var fahrenheit = false
+    @State private var openAtLogin = LoginItem.isEnabled
+    @State private var loginError: String?
 
     var body: some View {
         Form {
             Toggle("Show in menu bar", isOn: $show)
+            Toggle("Open at login", isOn: Binding { openAtLogin } set: { on in
+                loginError = LoginItem.set(on)
+                openAtLogin = LoginItem.isEnabled
+            })
+            .help("Starts with only the menu bar item when it's shown; otherwise opens the window.")
+            if let loginError {
+                Text(loginError).font(.caption).foregroundStyle(.secondary)
+            }
             // Only the options below are greyed out; the toggle itself must stay usable to turn this back on.
             Group {
             Section {
