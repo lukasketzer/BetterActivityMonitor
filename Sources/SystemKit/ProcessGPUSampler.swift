@@ -48,7 +48,9 @@ final class ProcessGPUSampler {
 
         let elapsed = lastSample.map { now > $0 ? Double(now - $0) : 0 } ?? 0
         var result: [pid_t: Usage] = [:]
-        for (pid, ns) in totals {
+        // A process that opened the GPU but never ran work on it isn't a GPU user. Virtual machines report every
+        // client this way, so there the list stays empty.
+        for (pid, ns) in totals where ns > 0 {
             var utilization = 0.0
             // A closed client drops its time from the total; treat a shrinking counter as idle.
             if elapsed > 0, let before = previous[pid], ns > before {
