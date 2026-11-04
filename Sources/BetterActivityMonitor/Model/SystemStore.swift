@@ -223,6 +223,12 @@ final class SystemStore {
         Task { await monitor.setDetailedSensors(on) }
     }
 
+    /// The GPU page's per-process list; off elsewhere because it costs ~3 ms per tick.
+    func setProcessGPU(_ on: Bool) {
+        let monitor = monitor
+        Task { await monitor.setProcessGPU(on) }
+    }
+
     /// Connection data spawns `nettop` every tick, so each consumer asks for it only while it needs it;
     /// the monitor runs the costliest mode any of them asks for.
     func requestConnections(_ mode: ConnectionMode, for consumer: ConnectionConsumer) {
