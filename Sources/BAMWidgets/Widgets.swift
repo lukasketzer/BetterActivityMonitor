@@ -1,6 +1,8 @@
 import SwiftUI
 import WidgetKit
 
+// widgetshots (Sources/WidgetShots) compiles these views into a command-line tool with its own entry point.
+#if !WIDGET_SHOTS
 @main
 struct BAMWidgetBundle: WidgetBundle {
     var body: some Widget {
@@ -13,6 +15,7 @@ struct BAMWidgetBundle: WidgetBundle {
         BatteryWidget()
     }
 }
+#endif
 
 // MARK: Memory
 
@@ -29,7 +32,7 @@ struct MemoryWidget: Widget {
 
 struct MemoryWidgetView: View {
     var entry: SystemEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.resolvedWidgetFamily) private var family
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -76,7 +79,7 @@ struct StorageWidget: Widget {
 
 struct StorageWidgetView: View {
     var entry: SystemEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.resolvedWidgetFamily) private var family
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -161,7 +164,7 @@ struct BatteryWidget: Widget {
 
 struct BatteryWidgetView: View {
     var entry: SystemEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.resolvedWidgetFamily) private var family
 
     var body: some View {
         Group {
