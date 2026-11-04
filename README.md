@@ -83,13 +83,6 @@ A compact menu bar item that looks like the system's own. Click it for live grap
 Requires macOS 14 Sonoma or later on Apple Silicon. Liquid Glass needs macOS 26; older systems get standard
 materials. Each release lists its `SHA256SUMS`.
 
-### Nightly builds
-
-`main` is built every night it has new changes and published as the
-[nightly release](https://github.com/lukasketzer/BetterActivityMonitor/releases/tag/nightly), versioned like
-`0.2.0-nightly.20261031`. Nightlies have the newest features before they are released, and may be rough. What's new
-since the last release is in the [changelog](docs/CHANGELOG.md) under *Unreleased*.
-
 ## Build from source
 
 You need Xcode 26 or later (for the macOS 26 SDK).

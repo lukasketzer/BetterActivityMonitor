@@ -45,7 +45,7 @@ jobs:
         run: scripts/bundle.sh
 
       - name: Build app with widgets
-        run: VERSION="$(scripts/version.sh nightly)" scripts/build-app.sh Release
+        run: scripts/build-app.sh Release
 
       - uses: actions/upload-artifact@v4
         with:

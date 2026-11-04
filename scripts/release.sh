@@ -1,10 +1,10 @@
 #!/bin/zsh
-# Promotes main to a release. main is the nightly channel; this turns its current state into a stable version.
+# Promotes main to a release: turns its current state into a stable version.
 #   scripts/release.sh                 release the version main is on (scripts/version.sh), e.g. 0.2.0
 #   scripts/release.sh 0.2.0-beta.1    a pre-release of that version: tag only, the changelog stays as is
 #   scripts/release.sh --push          the same, and push main and the tag (starts the release build)
 # For a stable version it moves the Unreleased changelog entries under the new version, commits "Release X.Y.Z",
-# tags vX.Y.Z, then starts the next minor version on main ("Start X.Y+1.0"), so nightlies count up from there.
+# tags vX.Y.Z, then starts the next minor version on main ("Start X.Y+1.0"), the version being worked on next.
 # For a patch release instead, run `scripts/version.sh set X.Y.Z` and commit before running this.
 set -euo pipefail
 cd "$(dirname "$0")/.."

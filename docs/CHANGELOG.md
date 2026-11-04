@@ -2,7 +2,7 @@
 
 All notable changes to this project. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project uses [Semantic Versioning](https://semver.org/). The release workflow copies the section of the
-tagged version into the GitHub Release notes; nightly builds show the `Unreleased` section.
+tagged version into the GitHub Release notes.
 
 ## [Unreleased]
 

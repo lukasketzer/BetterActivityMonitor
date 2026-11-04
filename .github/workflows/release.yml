@@ -1,10 +1,7 @@
 name: Release
 
-# Two channels:
-# - Nightly: every night main has new commits (or on demand via "Run workflow"), main is built and published
-#   as the rolling "nightly" pre-release, versioned like 0.2.0-nightly.20261031.
-# - Stable: pushing a tag like v0.2.0 (made by scripts/release.sh) builds and publishes that release.
-#   A tag with a suffix, like v0.2.0-beta.1, becomes a pre-release.
+# Pushing a tag like v0.2.0 (made by scripts/release.sh) builds and publishes that release.
+# A tag with a suffix, like v0.2.0-beta.1, becomes a pre-release.
 # Optional secrets turn on Developer ID signing and notarization; without them the build is ad-hoc signed:
 #   DEVELOPER_ID_CERT_P12      base64 of the "Developer ID Application" certificate exported as .p12
 #   DEVELOPER_ID_CERT_PASSWORD password of that .p12
@@ -12,9 +9,6 @@ name: Release
 on:
   push:
     tags: ["v*"]
-  schedule:
-    - cron: "0 2 * * *"
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -31,44 +25,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # the build number counts commits; the nightly check needs the tags
+          fetch-depth: 0  # the build number counts commits
 
       - name: Version
         id: version
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF_NAME#v}"
-            # The tag must match the project's version, so the app says what the release says.
-            if [[ "${VERSION%%-*}" != "$(scripts/version.sh)" ]]; then
-              echo "::error::Tag $GITHUB_REF_NAME doesn't match MARKETING_VERSION $(scripts/version.sh). Use scripts/release.sh."
-              exit 1
-            fi
-            CHANNEL=stable
-          else
-            if [[ "$GITHUB_REF" != refs/heads/main ]]; then
-              echo "::error::Nightlies are built from main."
-              exit 1
-            fi
-            VERSION="$(scripts/version.sh nightly)"
-            CHANNEL=nightly
-            if [[ "$GITHUB_EVENT_NAME" == schedule && "$(git rev-parse -q --verify 'refs/tags/nightly^{commit}' || true)" == "$(git rev-parse HEAD)" ]]; then
-              echo "No commits since the last nightly."
-              echo "skip=true" >> "$GITHUB_OUTPUT"
-            fi
+          VERSION="${GITHUB_REF_NAME#v}"
+          # The tag must match the project's version, so the app says what the release says.
+          if [[ "${VERSION%%-*}" != "$(scripts/version.sh)" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match MARKETING_VERSION $(scripts/version.sh). Use scripts/release.sh."
+            exit 1
           fi
           {
             echo "version=$VERSION"
-            echo "channel=$CHANNEL"
             echo "build=$(scripts/version.sh build)"
           } >> "$GITHUB_OUTPUT"
-          echo "$CHANNEL $VERSION (build $(scripts/version.sh build))"
+          echo "$VERSION (build $(scripts/version.sh build))"
 
       - name: Select latest Xcode
-        if: steps.version.outputs.skip != 'true'
         run: sudo xcode-select -s "$(find /Applications -maxdepth 1 -name 'Xcode*.app' | sort -V | tail -1)"
 
       - name: Test
-        if: steps.version.outputs.skip != 'true'
         run: swift test -c release --skip SamplerPerformanceTests --skip AppPerformanceTests
 
       - name: Import Developer ID certificate
@@ -76,7 +53,7 @@ jobs:
         env:
           CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
           CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
-        if: env.HAS_CERT == 'true' && steps.version.outputs.skip != 'true'
+        if: env.HAS_CERT == 'true'
         run: |
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
           KEYCHAIN_PASSWORD="$(uuidgen)"
@@ -92,7 +69,6 @@ jobs:
           rm "$RUNNER_TEMP/cert.p12"
 
       - name: Package
-        if: steps.version.outputs.skip != 'true'
         env:
           VERSION: ${{ steps.version.outputs.version }}
           BUILD_NUMBER: ${{ steps.version.outputs.build }}
@@ -103,27 +79,14 @@ jobs:
         run: scripts/package.sh
 
       - name: Release notes
-        if: steps.version.outputs.skip != 'true'
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          CHANNEL: ${{ steps.version.outputs.channel }}
           NOTARIZED: ${{ steps.cert.outputs.identity != '' && secrets.NOTARY_PASSWORD != '' }}
         run: |
           NOTES="$RUNNER_TEMP/notes.md"
-          if [[ "$CHANNEL" == nightly ]]; then
-            {
-              echo "Nightly build of \`main\` at $(git rev-parse --short HEAD), $(git log -1 --format=%cd --date=format:'%Y-%m-%d'). It may be unstable;"
-              echo "the [latest release](https://github.com/$GITHUB_REPOSITORY/releases/latest) is the stable version."
-              echo
-              echo "## Changes since the last release"
-              echo
-            } > "$NOTES"
-            SECTION=Unreleased
-          else
-            : > "$NOTES"
-            SECTION="${VERSION%%-*}"
-          fi
-          # The docs/CHANGELOG.md section for this version (Unreleased for nightlies), if there is one.
+          : > "$NOTES"
+          SECTION="${VERSION%%-*}"
+          # The docs/CHANGELOG.md section for this version, if there is one.
           awk -v v="$SECTION" '$0 ~ "^## \\[?"v"\\]?" {on=1; next} /^## / && on {exit} on' docs/CHANGELOG.md >> "$NOTES"
           if [[ "$NOTARIZED" != "true" ]]; then
             cat >> "$NOTES" <<'EOF'
@@ -134,8 +97,7 @@ jobs:
           fi
           cat "$NOTES"
 
-      - name: Publish stable release
-        if: steps.version.outputs.skip != 'true' && steps.version.outputs.channel == 'stable'
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
@@ -144,20 +106,6 @@ jobs:
           [[ "$VERSION" == *-* ]] && FLAGS+=(--prerelease)
           gh release create "$GITHUB_REF_NAME" --title "BetterActivityMonitor $VERSION" \
             --notes-file "$RUNNER_TEMP/notes.md" --generate-notes "${FLAGS[@]}" \
-            "build/BetterActivityMonitor-$VERSION.dmg" "build/BetterActivityMonitor-$VERSION.zip" build/SHA256SUMS
-
-      - name: Publish nightly
-        if: steps.version.outputs.skip != 'true' && steps.version.outputs.channel == 'nightly'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          # One rolling pre-release: replace the previous nightly and move its tag to this commit.
-          gh release delete nightly --yes 2>/dev/null || true
-          git tag -f nightly HEAD
-          git push -f origin refs/tags/nightly
-          gh release create nightly --prerelease --latest=false --verify-tag --title "Nightly $VERSION" \
-            --notes-file "$RUNNER_TEMP/notes.md" \
             "build/BetterActivityMonitor-$VERSION.dmg" "build/BetterActivityMonitor-$VERSION.zip" build/SHA256SUMS
 
       - name: Clean up keychain

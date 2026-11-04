@@ -119,7 +119,7 @@ Run the performance tests in release mode. Debug builds are several times slower
 | `scripts/check-menubar.sh [out-dir]` | Renders the menu bar item in every style, coloring and appearance at 0, 50 and 100 % into `build/menubar`, fails if it isn't 18 pt tall or changes width with its values, and reports the render time |
 | `scripts/build-app.sh [Release\|Debug]` | The Xcode build with widgets into `build/xcode/<config>`; ad-hoc signed, or with `DEVELOPER_ID` |
 | `scripts/package.sh` | Release DMG + zip + `SHA256SUMS` in `build/`, from `build-app.sh`; Developer ID signing and notarization when `DEVELOPER_ID` / `NOTARY_*` are set |
-| `scripts/version.sh [nightly\|build\|set X.Y.Z]` | Prints or sets the version (see [Versioning](#versioning-and-releases)) |
+| `scripts/version.sh [build\|set X.Y.Z]` | Prints or sets the version (see [Versioning](#versioning-and-releases)) |
 | `scripts/release.sh [version] [--push]` | Promotes `main` to a release (see [Versioning](#versioning-and-releases)) |
 | `scripts/make-icon.sh` | Regenerates the app icon (`Resources/AppIcon.icns` + `Resources/AppIcon.icon`) and the README's `docs/icon.png` from `scripts/make-icon.swift` |
 | `scripts/cputime.sh <pid>` | Total CPU seconds a process has used |
@@ -136,16 +136,12 @@ Run the performance tests in release mode. Debug builds are several times slower
 
 ## Versioning and releases
 
-The project uses [Semantic Versioning](https://semver.org/). `main` is the nightly channel, and releases are
-cut from it now and then.
+The project uses [Semantic Versioning](https://semver.org/). Releases are cut from `main` now and then.
 
 - **The version** lives in one place: `MARKETING_VERSION` in the Xcode project. Both `Info.plist` files and
   `bundle.sh` take it from there. On `main` it is the version being worked on, the next release.
   `scripts/version.sh` prints it.
 - **Build numbers** (`CFBundleVersion`) are the number of commits on the built commit, so they only go up.
-- **Nightlies:** [`release.yml`](../.github/workflows/release.yml) builds `main` every night it has new commits
-  (or when you press *Run workflow*). It publishes the build as the rolling `nightly` pre-release, versioned
-  `<next>-nightly.<date>`, e.g. `0.2.0-nightly.20261031`, with the changelog's `Unreleased` section as its notes.
 - **Changelog:** every user-visible change adds a line under `Unreleased` in [CHANGELOG.md](CHANGELOG.md).
 
 To promote `main` to a release:

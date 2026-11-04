@@ -2,7 +2,7 @@
 # Builds the release artifacts: build/BetterActivityMonitor-<version>.dmg and .zip, plus SHA256SUMS.
 # The app comes from the Xcode project (scripts/build-app.sh), so the desktop widgets are included.
 #   scripts/package.sh                         version from the project (scripts/version.sh)
-#   VERSION=0.2.0-nightly.20261031 scripts/package.sh
+#   VERSION=0.2.0-beta.1 scripts/package.sh
 # Signing: ad-hoc by default. With DEVELOPER_ID="Developer ID Application: Name (TEAMID)" the app and DMG
 # are signed with the hardened runtime; with NOTARY_APPLE_ID, NOTARY_TEAM_ID and NOTARY_PASSWORD
 # (an app-specific password) as well, the DMG is notarized and the ticket stapled.
