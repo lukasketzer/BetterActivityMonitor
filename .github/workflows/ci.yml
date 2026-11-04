@@ -47,7 +47,7 @@ jobs:
       - name: Build app with widgets
         run: scripts/build-app.sh Release
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: BetterActivityMonitor-${{ github.sha }}
           path: build/xcode/Release/BetterActivityMonitor.app
