@@ -28,6 +28,13 @@ struct GPUView: View {
                                      maxY: 1) { Fmt.percent($0, digits: 0) }
                             .frame(height: 200)
                     }
+                    Panel("GPU by Process", symbol: "list.bullet.rectangle") {
+                        Text("% of GPU · GPU time").font(.caption).foregroundStyle(.secondary)
+                    } content: {
+                        TopProcessList(entries: gpuProcesses, rows: 10) {
+                            "\(Fmt.percent($0.gpu))  ·  \(Fmt.cpuTime($0.gpuTime))"
+                        }
+                    }
                 }
                 .padding()
             } else {
@@ -36,6 +43,17 @@ struct GPUView: View {
                     .frame(minHeight: 400)
             }
         }
+        .onAppear { store.setProcessGPU(true) }
+        .onDisappear { store.setProcessGPU(false) }
+    }
+
+    /// Processes that have used the GPU, busiest right now first, then by total GPU time.
+    private var gpuProcesses: [ProcessEntry] {
+        (store.snapshot?.processes ?? [])
+            .filter { $0.gpuTime > 0 }
+            .sorted { ($0.gpu, $0.gpuTime) > ($1.gpu, $1.gpuTime) }
+            .prefix(10)
+            .map { $0 }
     }
 
     private var gpuTemperature: Double? {

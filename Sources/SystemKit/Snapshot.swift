@@ -250,6 +250,10 @@ public struct ProcessEntry: Sendable, Identifiable, Hashable {
     public var power: Double = 0
     /// Joules since the process started.
     public var energyTotal: Double = 0
+    /// Share of the GPU's time over the last tick (0...1), from the GPU driver's per-process counters.
+    public var gpu: Double = 0
+    /// GPU time used through the process's open GPU connections.
+    public var gpuTime: TimeInterval = 0
 }
 
 /// A power assertion: a process asking macOS not to sleep (the system, the display, or both).

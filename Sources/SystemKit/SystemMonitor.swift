@@ -8,6 +8,8 @@ public actor SystemMonitor {
     private let network = NetworkSampler()
     private let disks = DiskSampler()
     private let gpu = GPUSampler()
+    private let processGPU = ProcessGPUSampler()
+    private var processGPUEnabled = false
     private let battery = BatterySampler()
     private let sensors = TemperatureSampler()
     private let connections = ConnectionSampler()
@@ -21,6 +23,13 @@ public actor SystemMonitor {
 
     /// Read every temperature sensor (costly) instead of a representative subset.
     public func setDetailedSensors(_ on: Bool) { sensors.detailed = on }
+
+    /// Per-process GPU time walks every GPU client (~3 ms), so it is only sampled while the GPU page shows it.
+    public func setProcessGPU(_ on: Bool) {
+        guard on != processGPUEnabled else { return }
+        processGPUEnabled = on
+        if !on { processGPU.reset() }
+    }
 
     /// Per-connection data costs a `nettop` run per tick, so it is only sampled while something shows it.
     public func setConnectionMode(_ mode: ConnectionMode) { connections.mode = mode }
@@ -43,6 +52,10 @@ public actor SystemMonitor {
         let temps = timed("sensors") { sensors.sample() }
         let net = timed("connections") { connections.sample(now: now) }
         if let net { Self.attach(net.processes, to: &procs) }
+        if processGPUEnabled {
+            let gpuUsage = timed("process gpu") { processGPU.sample() }
+            Self.attach(gpuUsage, to: &procs)
+        }
         let snapshot = SystemSnapshot(
             timestamp: now,
             interval: interval,
@@ -60,6 +73,16 @@ public actor SystemMonitor {
         )
         lastTimings = timings.map { (name: $0.0, ms: $0.1) }
         return snapshot
+    }
+
+    /// Copies the GPU driver's per-process counters onto the matching process entries.
+    static func attach(_ usage: [pid_t: ProcessGPUSampler.Usage], to processes: inout [ProcessEntry]) {
+        guard !usage.isEmpty else { return }
+        for i in processes.indices {
+            guard let u = usage[processes[i].pid] else { continue }
+            processes[i].gpu = u.utilization
+            processes[i].gpuTime = u.gpuTime
+        }
     }
 
     /// Copies nettop's per-process counters onto the matching process entries.
