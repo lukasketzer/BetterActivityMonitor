@@ -38,6 +38,12 @@ plus a fast process list that lets you find, inspect and stop any app.
 
 <img src="docs/screenshots/widgets/grid.png" alt="All desktop widgets on the widget grid: System Overview in extra large and large, Activity Stats in large and medium, System Rings, Battery, Memory and Storage in medium and small, and Uptime">
 
+### Menu bar
+
+A compact menu bar item that looks like the system's own. Click it for live graphs.
+
+<img src="docs/screenshots/menubar-stage.png" width="900" alt="The menu bar item showing CPU, memory and GPU with percentages, on the macOS desktop, with its popover showing live CPU, memory and GPU graphs">
+
 ## Features
 
 - **See how your Mac is doing at a glance**: the Overview shows CPU, GPU, memory and temperature as
