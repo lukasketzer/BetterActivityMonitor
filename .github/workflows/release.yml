@@ -23,7 +23,7 @@ jobs:
     env:
       HAS_CERT: ${{ secrets.DEVELOPER_ID_CERT_P12 != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # the build number counts commits
 
