@@ -8,6 +8,9 @@ struct ActivityStatsIntent: WidgetConfigurationIntent {
 
     @Parameter(title: "Metrics", default: [.cpu, .gpu, .memory, .disk, .battery])
     var metrics: [WidgetMetric]
+
+    @Parameter(title: "Update", default: .oneMinute)
+    var interval: RefreshInterval
 }
 
 struct ActivityStatsProvider: AppIntentTimelineProvider {
@@ -21,7 +24,7 @@ struct ActivityStatsProvider: AppIntentTimelineProvider {
 
     func timeline(for configuration: ActivityStatsIntent, in context: Context) async -> Timeline<MetricsEntry> {
         let entry = metricsEntry(metrics: configuration.metrics, context: context)
-        return Timeline(entries: [entry], policy: .after(.now.addingTimeInterval(15 * 60)))
+        return Timeline(entries: [entry], policy: refreshPolicy(configuration.interval, kind: "ActivityStats"))
     }
 }
 

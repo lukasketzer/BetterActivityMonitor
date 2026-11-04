@@ -6,6 +6,9 @@ tagged version into the GitHub Release notes; nightly builds show the `Unrelease
 
 ## [Unreleased]
 
+### Changed
+
+- Every desktop widget now has an update speed (right-click ▸ Edit Widget), from every 2 seconds to every 15 minutes.
 ## [0.3.0] - 2026-11-02
 
 ### Added
