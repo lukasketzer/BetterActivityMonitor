@@ -89,7 +89,7 @@ struct SystemRingsWidget: Widget {
 
 struct SystemRingsView: View {
     var entry: RingsEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.resolvedWidgetFamily) private var family
 
     /// Chosen metrics without duplicates or unavailable ones (no battery on a desktop Mac), at most four.
     private var rings: [RingData] {

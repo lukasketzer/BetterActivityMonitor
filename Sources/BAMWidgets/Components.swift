@@ -192,3 +192,10 @@ extension View {
         widgetURL(URL(string: "betteractivitymonitor://\(section)"))
     }
 }
+
+extension EnvironmentValues {
+    /// The widget's size. Views read this instead of `widgetFamily`, which is read-only, so widgetshots can render
+    /// every size; in the widget extension the override is nil and this is WidgetKit's own value.
+    var resolvedWidgetFamily: WidgetFamily { widgetFamilyOverride ?? widgetFamily }
+    @Entry var widgetFamilyOverride: WidgetFamily?
+}

@@ -17,7 +17,7 @@ struct OverviewWidget: Widget {
 
 struct OverviewView: View {
     var entry: SystemEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.resolvedWidgetFamily) private var family
 
     private var system: SystemEntry { entry }
     private var wide: Bool { family == .systemExtraLarge }

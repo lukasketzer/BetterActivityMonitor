@@ -34,6 +34,10 @@ plus a fast process list that lets you find, inspect and stop any app.
 | <img src="docs/screenshots/processes.png" alt="Processes"><br>**Processes** | <img src="docs/screenshots/cpu.png" alt="CPU"><br>**CPU** |
 | <img src="docs/screenshots/memory.png" alt="Memory"><br>**Memory** | <img src="docs/screenshots/network.png" alt="Network: apps listening for connections"><br>**Network: listening apps** |
 
+### Desktop widgets
+
+<img src="docs/screenshots/widgets/grid.png" alt="All desktop widgets on the widget grid: System Overview in extra large and large, Activity Stats in large and medium, System Rings, Battery, Memory and Storage in medium and small, and Uptime">
+
 ## Features
 
 - **See how your Mac is doing at a glance**: the Overview shows CPU, GPU, memory and temperature as

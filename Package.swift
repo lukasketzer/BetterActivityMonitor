@@ -44,6 +44,15 @@ let package = Package(
             dependencies: ["SystemKit"],
             linkerSettings: currentDesign
         ),
+        // Renders the desktop widgets to PNGs for the README and website: `swift run widgetshots`.
+        .executableTarget(
+            name: "widgetshots",
+            dependencies: ["SystemKit"],
+            path: "Sources",
+            sources: ["WidgetShots", "BAMWidgets"],
+            swiftSettings: [.define("WIDGET_SHOTS")],
+            linkerSettings: currentDesign
+        ),
         .executableTarget(
             name: "sysbench",
             dependencies: ["SystemKit"]
