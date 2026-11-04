@@ -86,17 +86,3 @@ struct SystemEntry: TimelineEntry {
         )
     }()
 }
-
-/// Shared by all widgets: one fresh reading, refreshed every 15 minutes (WidgetKit's budget allows no more).
-struct SystemProvider: TimelineProvider {
-    func placeholder(in context: Context) -> SystemEntry { .placeholder }
-
-    func getSnapshot(in context: Context, completion: @escaping (SystemEntry) -> Void) {
-        completion(context.isPreview ? .placeholder : .sample())
-    }
-
-    func getTimeline(in context: Context, completion: @escaping (Timeline<SystemEntry>) -> Void) {
-        let entry = SystemEntry.sample()
-        completion(Timeline(entries: [entry], policy: .after(.now.addingTimeInterval(15 * 60))))
-    }
-}
