@@ -6,6 +6,8 @@ tagged version into the GitHub Release notes; nightly builds show the `Unrelease
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-04
+
 ### Added
 
 - The app can run from the menu bar alone. With Settings ▸ Menu Bar ▸ Show in menu bar on, closing the window keeps
