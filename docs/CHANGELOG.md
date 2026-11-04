@@ -6,9 +6,26 @@ tagged version into the GitHub Release notes; nightly builds show the `Unrelease
 
 ## [Unreleased]
 
+### Added
+
+- The app can run from the menu bar alone. With Settings ▸ Menu Bar ▸ Show in menu bar on, closing the window keeps
+  the menu bar item running without a Dock icon; Open Monitor in its popover brings the window back.
+- Settings ▸ Menu Bar ▸ Open at login. Opened at login, the app starts with only the menu bar item.
+- The GPU page lists the processes that use the GPU, busiest first, with their share of the GPU and total GPU time.
+- The System page shows the Mac's model name, boot and last wake times, thermal state and Low Power Mode, and has a
+  Copy System Info button.
+- Selecting an event in the network log opens an inspector with both endpoints, reverse DNS, traffic, lifetime and
+  the matching open or close event, with shortcuts to filter the log or reveal the process.
+
 ### Changed
 
 - Every desktop widget now has an update speed (right-click ▸ Edit Widget), from every 2 seconds to every 15 minutes.
+- With the menu bar item on, ⌘Q closes the windows to the menu bar; ⌥⌘Q, or Quit in the popover, quits.
+
+### Removed
+
+- The Memory Pressure stat, from the Memory page and the menu bar.
+
 ## [0.3.0] - 2026-11-02
 
 ### Added
