@@ -25,6 +25,9 @@ struct SystemRingsIntent: WidgetConfigurationIntent {
 
     @Parameter(title: "Metrics", default: [.cpu, .gpu, .memory, .disk])
     var metrics: [WidgetMetric]
+
+    @Parameter(title: "Update", default: .oneMinute)
+    var interval: RefreshInterval
 }
 
 struct RingsEntry: TimelineEntry {
@@ -44,7 +47,7 @@ struct RingsProvider: AppIntentTimelineProvider {
 
     func timeline(for configuration: SystemRingsIntent, in context: Context) async -> Timeline<RingsEntry> {
         let entry = RingsEntry(system: .sample(), metrics: configuration.metrics)
-        return Timeline(entries: [entry], policy: .after(.now.addingTimeInterval(15 * 60)))
+        return Timeline(entries: [entry], policy: refreshPolicy(configuration.interval, kind: "SystemRings"))
     }
 }
 

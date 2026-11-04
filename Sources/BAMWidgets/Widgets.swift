@@ -18,7 +18,7 @@ struct BAMWidgetBundle: WidgetBundle {
 
 struct MemoryWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "Memory", provider: SystemProvider()) { entry in
+        AppIntentConfiguration(kind: "Memory", intent: RefreshIntent.self, provider: SystemProvider(kind: "Memory")) { entry in
             MemoryWidgetView(entry: entry).containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Memory")
@@ -65,7 +65,7 @@ struct MemoryWidgetView: View {
 
 struct StorageWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "Storage", provider: SystemProvider()) { entry in
+        AppIntentConfiguration(kind: "Storage", intent: RefreshIntent.self, provider: SystemProvider(kind: "Storage")) { entry in
             StorageWidgetView(entry: entry).containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Storage")
@@ -111,7 +111,7 @@ struct StorageWidgetView: View {
 
 struct UptimeWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "Uptime", provider: SystemProvider()) { entry in
+        AppIntentConfiguration(kind: "Uptime", intent: RefreshIntent.self, provider: SystemProvider(kind: "Uptime")) { entry in
             UptimeWidgetView(entry: entry).containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Uptime")
@@ -150,7 +150,7 @@ struct UptimeWidgetView: View {
 
 struct BatteryWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "Battery", provider: SystemProvider()) { entry in
+        AppIntentConfiguration(kind: "Battery", intent: RefreshIntent.self, provider: SystemProvider(kind: "Battery")) { entry in
             BatteryWidgetView(entry: entry).containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Battery")

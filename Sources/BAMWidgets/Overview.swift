@@ -6,7 +6,7 @@ import WidgetKit
 /// and level bars.
 struct OverviewWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "Overview", provider: SystemProvider()) { entry in
+        AppIntentConfiguration(kind: "Overview", intent: RefreshIntent.self, provider: SystemProvider(kind: "Overview")) { entry in
             OverviewView(entry: entry).containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("System Overview")
