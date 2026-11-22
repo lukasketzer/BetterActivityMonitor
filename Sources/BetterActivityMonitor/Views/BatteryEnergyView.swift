@@ -20,12 +20,7 @@ struct BatteryEnergyView: View {
                             // A plain ring like the Overview's; the system gauge style adds marker dots.
                             let tint = b.charge < 0.2 ? theme.high : theme.low
                             ZStack {
-                                Circle().stroke(tint.opacity(0.2), lineWidth: 8)
-                                Circle()
-                                    .trim(from: 0, to: min(max(b.charge, 0.004), 1))
-                                    .stroke(tint, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                                    .rotationEffect(.degrees(-90))
-                                    .animation(.smooth(duration: 0.6), value: b.charge)
+                                RingGauge(fraction: b.charge, color: tint, lineWidth: 8, trackOpacity: 0.2)
                                 Text(Fmt.percent(b.charge, digits: 0))
                                     .font(.system(size: 18, weight: .semibold, design: .rounded).monospacedDigit())
                             }

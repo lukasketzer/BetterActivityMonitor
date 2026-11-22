@@ -34,6 +34,25 @@ final class SamplerTests: XCTestCase {
         XCTAssertTrue(s.processes.contains { $0.pid == 1 }, "launchd should always be listed")
     }
 
+    /// Idle processes reuse their last task info instead of asking the kernel again; they must keep
+    /// reporting the same thread count and memory as when they were read in full.
+    func testIdleProcessesKeepTheirTaskInfo() async throws {
+        let monitor = SystemMonitor()
+        let first = await monitor.sample().processes
+        try await Task.sleep(for: .milliseconds(300))
+        let second = await monitor.sample().processes
+        let before = Dictionary(first.map { ($0.pid, $0) }, uniquingKeysWith: { a, _ in a })
+        var idle = 0
+        for p in second where p.hasTaskInfo {
+            guard let old = before[p.pid], old.startTime == p.startTime, old.cpuTime == p.cpuTime else { continue }
+            idle += 1
+            XCTAssertEqual(p.threads, old.threads, "\(p.name) (\(p.pid)) lost its thread count")
+            XCTAssertGreaterThan(p.threads, 0, "\(p.name) (\(p.pid))")
+            XCTAssertNotEqual(p.state, .running, "\(p.name) used no CPU but is reported running")
+        }
+        XCTAssertGreaterThan(idle, 10, "expected some idle processes between two samples")
+    }
+
     func testNetworkCountersAreMonotonic() async throws {
         let monitor = SystemMonitor()
         let a = await monitor.sample().network

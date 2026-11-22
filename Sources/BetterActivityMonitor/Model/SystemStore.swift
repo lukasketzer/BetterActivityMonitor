@@ -99,6 +99,9 @@ struct ControlError: Identifiable {
 @MainActor
 @Observable
 final class SystemStore {
+    /// The app's one store, shared by the SwiftUI scenes and the AppKit menu bar item.
+    static let shared = SystemStore()
+
     private(set) var snapshot: SystemSnapshot?
 
     // Histories for graphs.
@@ -145,6 +148,9 @@ final class SystemStore {
     var isLiveResizing = false
     /// Set by ResizeBench to get the same behaviour without a real drag.
     var simulatedLiveResize = false
+    /// Whether the main window is on screen. While it isn't (closed to the menu bar, minimized, on another Space,
+    /// fully covered) the window shows no page, so SwiftUI has nothing to update; the menu bar item keeps running.
+    var mainWindowVisible = true
     var filterText = ""
     var collapsed: Set<pid_t> = []
     var pendingSignal: PendingSignal?
@@ -342,20 +348,24 @@ final class SystemStore {
         if let hottest = cpuSensors.map(\.celsius).max() { push(&cpuTemperature, hottest) }
         for sensor in s.sensors { sensorMax[sensor.name] = max(sensorMax[sensor.name] ?? 0, sensor.celsius) }
 
+        let alive = Set(s.processes.map(\.pid))
         if snapshot != nil {
-            var nextCPU: [pid_t: History] = [:]
-            var nextMem: [pid_t: History] = [:]
-            nextCPU.reserveCapacity(s.processes.count)
-            for p in s.processes {
-                var c = processCPU[p.pid] ?? History(capacity: 60)
-                c.append(p.cpu, at: date)
-                nextCPU[p.pid] = c
-                var mem = processMemory[p.pid] ?? History(capacity: 60)
-                mem.append(Double(p.memory), at: date)
-                nextMem[p.pid] = mem
+            // Take the dictionaries out of the store so they are uniquely referenced and every history is
+            // appended to in place. Copying each one into a new dictionary copied all ~1000 point arrays per tick.
+            var cpuHistories = processCPU
+            var memHistories = processMemory
+            processCPU = [:]
+            processMemory = [:]
+            if cpuHistories.count > alive.count || memHistories.count > alive.count {
+                cpuHistories = cpuHistories.filter { alive.contains($0.key) }
+                memHistories = memHistories.filter { alive.contains($0.key) }
             }
-            processCPU = nextCPU
-            processMemory = nextMem
+            for p in s.processes {
+                cpuHistories[p.pid, default: History(capacity: 60)].append(p.cpu, at: date)
+                memHistories[p.pid, default: History(capacity: 60)].append(Double(p.memory), at: date)
+            }
+            processCPU = cpuHistories
+            processMemory = memHistories
         }
 
         // Only diff samples taken in the same mode; switching modes changes which flows are visible.
@@ -376,7 +386,6 @@ final class SystemStore {
             processGeneration &+= 1
         }
         snapshot = s
-        let alive = Set(s.processes.map(\.pid))
         if !selection.isSubset(of: alive) && !paused { selection = selection.intersection(alive) }
     }
 

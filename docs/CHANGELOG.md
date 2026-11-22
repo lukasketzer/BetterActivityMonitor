@@ -6,6 +6,20 @@ tagged version into the GitHub Release notes.
 
 ## [Unreleased]
 
+### Changed
+
+- The menu bar item is a standard status item; its popover now opens with the usual popover arrow.
+
+### Fixed
+
+- The Overview used about half a CPU core: its rings animated by laying out the whole window on every display
+  frame. They now animate in Core Animation, and the page uses about 4 %.
+- With the window closed, minimized or covered, the app kept drawing the hidden page (about 55 % of a core with only
+  the menu bar item showing). The page now stops while the window is off screen.
+- Memory: the menu bar image and the history charts each held over 100 MB of GPU buffers. The app now uses about
+  50 MB in the menu bar and about 90 MB with the Overview open, down from 170-250 MB.
+- Less work per sample in the process list and in the per-process history.
+
 ## [0.4.1] - 2026-11-04
 
 0.4.0 was never published, because its release build failed. 0.4.1 is the first release with the 0.4.0 changes

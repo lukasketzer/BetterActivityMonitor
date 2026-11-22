@@ -127,12 +127,7 @@ private struct ActivityRing: View {
     var body: some View {
         VStack(spacing: 12) {
             ZStack {
-                Circle().stroke(ring.color.opacity(0.16), lineWidth: lineWidth)
-                Circle()
-                    .trim(from: 0, to: min(max(ring.fraction, 0.004), 1))
-                    .stroke(ring.color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .animation(.smooth(duration: 0.6), value: ring.fraction)
+                RingGauge(fraction: ring.fraction, color: ring.color, lineWidth: lineWidth)
                 VStack(spacing: 1) {
                     if let symbol = ring.symbol {
                         Image(systemName: symbol).font(.caption.weight(.bold)).foregroundStyle(ring.color)
