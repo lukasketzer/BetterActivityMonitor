@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BetterActivityMonitor Performance Audit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one left-aligned report column (max 1120px); a sticky section bar; findings as a ranked list;
+   trace explorer as a full-width instrument panel (picker, flame graph, timeline, frame tables). */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef0f4;
+  --ink: #12151b;
+  --ink-2: #4a505c;
+  --muted: #7a808c;
+  --line: #dfe2e8;
+  --accent: #2a78d6;
+  --before: #eb6834;
+  --after: #2a78d6;
+  --good: #0f7a2e;
+  --good-bg: #e3f3e7;
+  --warn: #9a5b00;
+  --warn-bg: #fbf0dc;
+  --crit: #b3261e;
+  --crit-bg: #fbe5e3;
+  --c-app: #2a78d6;
+  --c-swiftui: #6250d6;
+  --c-appkit: #1baf7a;
+  --c-render: #e87ba4;
+  --c-kernel: #eb6834;
+  --c-runtime: #eda100;
+  --c-foundation: #008300;
+  --c-other: #9a9fa8;
+  --flame-ink: #0b0d12;
+  --font-text: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111318; --surface: #191c22; --surface-2: #22262e; --ink: #eef0f4; --ink-2: #b9bec9; --muted: #8a909c;
+    --line: #2c313a; --accent: #4a93ea; --before: #e0703f; --after: #4a93ea;
+    --good: #5fd07e; --good-bg: #16311f; --warn: #f0b45a; --warn-bg: #33270f; --crit: #ff8a80; --crit-bg: #3a1a18;
+    --c-app: #3987e5; --c-swiftui: #9085e9; --c-appkit: #199e70; --c-render: #d55181; --c-kernel: #d95926;
+    --c-runtime: #c98500; --c-foundation: #0ca30c; --c-other: #6b717c; --flame-ink: #0b0d12;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111318; --surface: #191c22; --surface-2: #22262e; --ink: #eef0f4; --ink-2: #b9bec9; --muted: #8a909c;
+  --line: #2c313a; --accent: #4a93ea; --before: #e0703f; --after: #4a93ea;
+  --good: #5fd07e; --good-bg: #16311f; --warn: #f0b45a; --warn-bg: #33270f; --crit: #ff8a80; --crit-bg: #3a1a18;
+  --c-app: #3987e5; --c-swiftui: #9085e9; --c-appkit: #199e70; --c-render: #d55181; --c-kernel: #d95926;
+  --c-runtime: #c98500; --c-foundation: #0ca30c; --c-other: #6b717c; --flame-ink: #0b0d12;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-text); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 64px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 1120px; margin: 0 auto; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(28px, 4.2vw, 42px); font-weight: 600; letter-spacing: -0.02em; }
+h2 { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+h3 { font-size: 17px; font-weight: 600; }
+p { margin: 0; max-width: 72ch; color: var(--ink-2); }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; color: var(--ink); }
+a { color: var(--accent); }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+header.top { padding-top: 48px; padding-bottom: 28px; display: grid; gap: 14px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); }
+.meta b { color: var(--ink-2); font-weight: 500; }
+nav.sections {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  border-bottom: 1px solid var(--line); display: flex; gap: 4px; overflow-x: auto; padding-block: 10px;
+}
+nav.sections a {
+  white-space: nowrap; text-decoration: none; color: var(--ink-2); font-size: 13px; font-weight: 500;
+  padding: 5px 10px; border-radius: 6px;
+}
+nav.sections a:hover { background: var(--surface-2); color: var(--ink); }
+nav.sections a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+section { padding-top: 48px; display: grid; gap: 18px; scroll-margin-top: 56px; }
+.lede { font-size: 17px; color: var(--ink-2); max-width: 70ch; }
+
+/* headline numbers */
+.headline { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.hn { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; display: grid; gap: 6px; }
+.hn .what { font-size: 13px; color: var(--ink-2); }
+.hn .nums { display: flex; align-items: baseline; gap: 10px; font-variant-numeric: tabular-nums; flex-wrap: wrap; }
+.hn .from { font-size: 18px; color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.hn .to { font-size: 30px; font-weight: 600; letter-spacing: -0.01em; }
+.hn .unit { font-size: 13px; color: var(--muted); }
+.hn .note { font-size: 12px; color: var(--muted); }
+
+/* findings */
+.findings { display: grid; gap: 12px; counter-reset: f; }
+.finding { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; display: grid; gap: 10px; }
+.finding .head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.finding .rank { font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+.pill { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.crit { color: var(--crit); background: var(--crit-bg); }
+.pill.warn { color: var(--warn); background: var(--warn-bg); }
+.pill.good { color: var(--good); background: var(--good-bg); }
+.pill.info { color: var(--ink-2); background: var(--surface-2); }
+.finding dl { display: grid; grid-template-columns: 110px 1fr; gap: 6px 14px; margin: 0; font-size: 14px; }
+.finding dt { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding-top: 2px; }
+.finding dd { margin: 0; color: var(--ink-2); min-width: 0; }
+.finding .result { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 500; }
+.trace-link { background: none; border: 1px solid var(--line); color: var(--accent); border-radius: 6px; padding: 2px 8px; font: inherit; font-size: 12px; cursor: pointer; margin: 2px 4px 0 0; }
+.trace-link:hover { background: var(--surface-2); }
+@media (max-width: 560px) { .finding dl { grid-template-columns: 1fr; } }
+
+/* tables */
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+th, td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); background: var(--surface-2); }
+tr:last-child td { border-bottom: none; }
+td.delta-good { color: var(--good); font-weight: 600; }
+td.delta-bad { color: var(--crit); font-weight: 600; }
+td.frame { font-family: var(--font-mono); font-size: 12px; white-space: normal; word-break: break-word; min-width: 260px; }
+
+/* charts */
+.chart { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+#ablation-chart svg { max-width: 640px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.legend i.sq { border-radius: 2px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.grid2 > * { min-width: 0; }
+.axis text, .chart text { fill: var(--muted); font-size: 11px; font-family: var(--font-text); }
+.chart .lbl { fill: var(--ink-2); font-size: 12px; }
+.gridline { stroke: var(--line); stroke-width: 1; }
+
+/* trace explorer */
+.explorer { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); display: grid; min-width: 0; }
+.ex-bar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.ex-bar label { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; display: flex; gap: 8px; align-items: center; }
+select, input[type="search"] {
+  font: inherit; font-size: 13.5px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 8px; max-width: 100%;
+}
+.ex-stats { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 10px 14px; font-size: 13px; color: var(--ink-2); border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.ex-stats b { color: var(--ink); font-weight: 600; }
+.flame-box { position: relative; padding: 10px 14px 14px; min-width: 0; }
+.flame-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); padding-bottom: 8px; }
+.crumbs { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); overflow-x: auto; white-space: nowrap; flex: 1; min-width: 0; }
+button.small { font: inherit; font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+button.small:hover { border-color: var(--muted); }
+.flame-scroll { overflow-y: auto; max-height: 560px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+canvas.flame { display: block; width: 100%; cursor: pointer; }
+.tip {
+  position: fixed; z-index: 20; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; max-width: min(520px, 90vw); box-shadow: 0 6px 24px rgba(0,0,0,.18);
+  font-variant-numeric: tabular-nums;
+}
+.tip .fn { font-family: var(--font-mono); font-size: 11.5px; word-break: break-word; margin-bottom: 4px; }
+.tip .row { color: var(--ink-2); }
+.ex-lower { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; padding: 0 14px 14px; }
+.ex-lower > * { min-width: 0; }
+.ex-lower h3 { font-size: 13px; color: var(--ink-2); margin-bottom: 8px; }
+.mini-table { max-height: 380px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+.mini-table table { font-size: 12.5px; }
+.mini-table td.frame { min-width: 220px; }
+.cat-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; }
+.callout { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; color: var(--ink-2); max-width: 75ch; }
+pre { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; overflow-x: auto; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5; margin: 0; color: var(--ink); }
+ul.plain { margin: 0; padding-left: 20px; color: var(--ink-2); max-width: 75ch; display: grid; gap: 6px; }
+.loading { color: var(--muted); font-size: 13px; padding: 20px 14px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Performance audit · 22 November 2026</div>
+    <h1>BetterActivityMonitor Performance Audit</h1>
+    <p class="lede">Every screen, the menu bar item and the sampler were measured and traced with Instruments' Time Profiler, before and after a round of fixes. Most of the app's CPU and memory went to things nobody could see: a ring animation that re-laid out the whole window at display refresh rate (even with the window closed), and GPU buffer pools of about 120 MB each behind an 18-point menu bar image and behind the history charts.</p>
+    <div class="meta">
+      <span><b>Machine</b> Apple M4 Pro, 14 cores, 48 GB, two displays</span>
+      <span><b>macOS</b> 27.2.1 (26B131)</span>
+      <span><b>Builds</b> before: main @ 9b7dce2 · after: same + this audit's changes (Release, Xcode 27.2)</span>
+      <span><b>Refresh</b> 1 s unless noted</span>
+    </div>
+  </header>
+
+  <nav class="sections" aria-label="Sections">
+    <a href="#summary">Summary</a>
+    <a href="#findings">Findings</a>
+    <a href="#screens">Measurements</a>
+    <a href="#traces">Trace explorer</a>
+    <a href="#memory">Memory</a>
+    <a href="#sampler">Sampler</a>
+    <a href="#method">Method</a>
+  </nav>
+
+  <section id="summary">
+    <div class="eyebrow">Summary</div>
+    <div class="headline" id="headline"></div>
+    <p id="summary-note"></p>
+  </section>
+
+  <section id="findings">
+    <div class="eyebrow">Findings, ranked by impact</div>
+    <h2>What was eating CPU and RAM</h2>
+    <div class="findings" id="findings-list"></div>
+  </section>
+
+  <section id="screens">
+    <div class="eyebrow">Measurements</div>
+    <h2>Before and after, in the same conditions</h2>
+    <p>Each run is a fresh launch of the app on one screen with its window in front (or closed, for menu-bar-only), 12 s of warm-up, then CPU time over 30 s as a percentage of one core and the physical footprint at the end. Pairs below compare runs taken in the same display state; where a pair was repeated, the value is the median.</p>
+    <div class="grid2">
+      <div class="chart" id="cpu-chart"></div>
+      <div class="chart" id="mem-chart"></div>
+    </div>
+    <div class="chart" id="ablation-chart"></div>
+    <h3>Every run</h3>
+    <div class="table-wrap"><table id="screens-table"></table></div>
+  </section>
+
+  <section id="traces">
+    <div class="eyebrow">Trace explorer</div>
+    <h2>Time Profiler traces</h2>
+    <p>Each trace is 15 s of Instruments' Time Profiler (1 ms sampling) attached to a running instance. The flame graph is the call tree with callers on top; width is CPU time. Click a frame to zoom into it, hover for details, and search to highlight frames by name. Frames under 0.25 % of the trace are left out.</p>
+    <div class="explorer">
+      <div class="ex-bar">
+        <label for="trace-pick">Trace <select id="trace-pick"></select></label>
+        <label for="thread-pick">Thread <select id="thread-pick"></select></label>
+        <label for="flame-search">Find <input type="search" id="flame-search" placeholder="e.g. NSHostingView.layout" size="26"></label>
+      </div>
+      <div class="ex-stats" id="ex-stats"><span class="loading">Loading trace…</span></div>
+      <div class="flame-box">
+        <div class="flame-tools">
+          <button class="small" id="flame-reset" type="button">Reset zoom</button>
+          <div class="crumbs" id="crumbs"></div>
+        </div>
+        <div class="legend" id="cat-legend" style="padding-bottom:8px"></div>
+        <div class="flame-scroll"><canvas class="flame" id="flame"></canvas></div>
+      </div>
+      <div class="ex-lower">
+        <div class="chart" style="border:none;padding:0"><h3>CPU on the main thread over time (ms of CPU per 100 ms)</h3><div id="timeline"></div></div>
+        <div class="chart" style="border:none;padding:0"><h3>Time by library (self time)</h3><div id="libs"></div></div>
+      </div>
+      <div class="ex-lower">
+        <div><h3>Heaviest frames, self time</h3><div class="mini-table"><table id="self-table"></table></div></div>
+        <div><h3>Heaviest frames, including callees</h3><div class="mini-table"><table id="incl-table"></table></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="memory">
+    <div class="eyebrow">Memory</div>
+    <h2>Where the footprint goes</h2>
+    <div id="memory-body"></div>
+  </section>
+
+  <section id="sampler">
+    <div class="eyebrow">Sampler</div>
+    <h2>The background sampler</h2>
+    <div id="sampler-body"></div>
+  </section>
+
+  <section id="method">
+    <div class="eyebrow">Method</div>
+    <h2>How this was measured</h2>
+    <div id="method-body"></div>
+  </section>
+</div>
+<div class="tip" id="tip" hidden></div>
+<script src="data.js"></script>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = (v, d = 1) => (v == null ? "—" : Number(v).toFixed(d));
+
+const CATS = [
+  ["app", "App code", (b) => /^(BetterActivityMonitor|sysbench)$/.test(b)],
+  ["swiftui", "SwiftUI + AttributeGraph", (b) => /^(SwiftUI|SwiftUICore|AttributeGraph)$/.test(b)],
+  ["appkit", "AppKit + Auto Layout", (b) => /^(AppKit|HIToolbox|UpdateCycle|CoreAutoLayout|ViewBridge)$/.test(b)],
+  ["render", "Rendering (CA, CG, Metal)", (b) => /^(QuartzCore|CoreGraphics|Metal|IOSurface|CoreSVG|RenderBox|AGXMetal.*|CoreText|libRIP.*|ImageIO|CoreImage)$/.test(b)],
+  ["kernel", "Kernel calls", (b) => /^libsystem_kernel/.test(b)],
+  ["runtime", "Swift/ObjC runtime, malloc", (b) => /^(libswiftCore|libswift_Concurrency|libsystem_malloc|libobjc.*|libdispatch|libsystem_pthread|dyld|libsystem_platform)/.test(b)],
+  ["foundation", "Foundation + CoreFoundation", (b) => /^(Foundation|CoreFoundation)$/.test(b)],
+];
+function catOf(name) {
+  const m = name.match(/\[([^\]]+)\]\s*$/);
+  const b = m ? m[1] : "";
+  for (const [key, , test] of CATS) if (test(b)) return key;
+  return "other";
+}
+const catLabel = (k) => (CATS.find((c) => c[0] === k) || [k, "Other"])[1];
+const catColor = (k) => css("--c-" + k);
+
+let DATA = null;
+const traceCache = {};
+let state = { trace: null, thread: "Main Thread", zoom: null, search: "" };
+
+/* ---------- findings (written from the measurements below) ---------- */
+const FINDINGS = window.FINDINGS || [];
+
+async function main() {
+  DATA = window.REPORT_DATA || await (await fetch("data.json")).json();
+  renderHeadline();
+  renderFindings();
+  renderScreens();
+  renderMemory();
+  renderSampler();
+  renderMethod();
+  initExplorer();
+}
+
+function renderHeadline() {
+  const h = DATA.headline;
+  $("#headline").innerHTML = h.map((x) => `
+    <div class="hn">
+      <div class="what">${esc(x.what)}</div>
+      <div class="nums"><span class="from">${esc(x.from)}</span><span class="to">${esc(x.to)}</span><span class="unit">${esc(x.unit)}</span></div>
+      <div class="note">${esc(x.note)}</div>
+    </div>`).join("");
+  $("#summary-note").innerHTML = DATA.summaryNote;
+}
+
+function renderFindings() {
+  $("#findings-list").innerHTML = DATA.findings.map((f, i) => `
+    <article class="finding">
+      <div class="head"><span class="rank">#${i + 1}</span><span class="pill ${f.sev}">${esc(f.sevLabel)}</span><h3>${esc(f.title)}</h3></div>
+      <dl>
+        <dt>Evidence</dt><dd>${f.evidence}</dd>
+        <dt>Cause</dt><dd>${f.cause}</dd>
+        <dt>Fix</dt><dd>${f.fix}</dd>
+        <dt>Result</dt><dd class="result">${f.result}</dd>
+        ${f.traces ? `<dt>Traces</dt><dd>${f.traces.map((t) => `<button class="trace-link" type="button" data-trace="${t[0]}" data-search="${esc(t[2] || "")}">${esc(t[1])}</button>`).join("")}</dd>` : ""}
+      </dl>
+    </article>`).join("");
+  document.querySelectorAll(".trace-link").forEach((b) => b.addEventListener("click", () => {
+    $("#trace-pick").value = b.dataset.trace;
+    $("#flame-search").value = b.dataset.search;
+    state.search = b.dataset.search;
+    loadTrace(b.dataset.trace);
+    $("#traces").scrollIntoView({ behavior: "smooth" });
+  }));
+}
+
+/* ---------- dumbbell charts ---------- */
+function dumbbell(el, title, rows, key, unit, maxV) {
+  const W = 520, rowH = 34, top = 30, left = 168, right = 64;
+  const H = top + rows.length * rowH + 26;
+  const max = maxV || Math.max(...rows.flatMap((r) => [r.before?.[key] || 0, r.after?.[key] || 0])) * 1.08;
+  const x = (v) => left + (v / max) * (W - left - right);
+  const ticks = niceTicks(max, 5);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">`;
+  for (const t of ticks) s += `<line class="gridline" x1="${x(t)}" x2="${x(t)}" y1="${top - 8}" y2="${H - 22}"/><text x="${x(t)}" y="${H - 6}" text-anchor="middle">${t}${unit}</text>`;
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + rowH / 2;
+    const b = r.before?.[key], a = r.after?.[key];
+    s += `<text class="lbl" x="${left - 10}" y="${y + 4}" text-anchor="end">${esc(r.short || r.name)}</text>`;
+    if (b != null && a != null) s += `<line x1="${x(b)}" x2="${x(a)}" y1="${y}" y2="${y}" stroke="${css("--muted")}" stroke-width="2" stroke-opacity=".45"/>`;
+    if (b != null) s += `<circle cx="${x(b)}" cy="${y}" r="5" fill="${css("--before")}" stroke="${css("--surface")}" stroke-width="2"><title>${esc(r.name)} before: ${fmt(b)}${unit}</title></circle>`;
+    if (a != null) s += `<circle cx="${x(a)}" cy="${y}" r="5" fill="${css("--after")}" stroke="${css("--surface")}" stroke-width="2"><title>${esc(r.name)} after: ${fmt(a)}${unit}</title></circle>`;
+    const d = key === "footprint" ? 0 : 1;
+    if (a != null && b != null && Math.abs(x(a) - x(b)) < 44) {
+      s += `<text x="${x(Math.max(a, b)) + 9}" y="${y + 4}" style="fill:${css("--ink-2")}">${fmt(b, d)} \u2192 ${fmt(a, d)}</text>`;
+    } else {
+      if (b != null) s += `<text x="${x(b) + 9}" y="${y + 4}" style="fill:${css("--ink-2")}">${fmt(b, d)}</text>`;
+      if (a != null) s += `<text x="${x(a)}" y="${y - 8}" text-anchor="middle" style="fill:${css("--ink")};font-weight:600">${fmt(a, d)}</text>`;
+    }
+  });
+  s += `</svg>`;
+  el.innerHTML = `<h3>${esc(title)}</h3><div class="legend"><span><i style="background:var(--before)"></i>Before</span><span><i style="background:var(--after)"></i>After</span></div>${s}`;
+}
+function niceTicks(max, n) {
+  const step0 = max / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= step0);
+  const out = [];
+  for (let v = 0; v <= max + 1e-9; v += step) out.push(+v.toFixed(6));
+  return out;
+}
+
+function renderScreens() {
+  const rows = DATA.comparisons.map((c) => ({ name: c.name, short: c.name, before: c.before, after: c.after }));
+  dumbbell($("#cpu-chart"), "CPU, % of one core (before \u2192 after)", rows, "cpu", "%");
+  dumbbell($("#mem-chart"), "Physical footprint, MB (before \u2192 after)", DATA.comparisons.filter((c) => c.memOk).map((c) => ({ name: c.name, before: c.before, after: c.after })), "footprint", "");
+  // ablation: horizontal bars, one series
+  const ab = DATA.ablation;
+  const W = 520, rowH = 26, L = 178, R = 56, T = 4;
+  const H = T + ab.length * rowH + 22;
+  const max = Math.max(...ab.map((a) => a.cpu)) * 1.05;
+  const x = (v) => L + (v / max) * (W - L - R);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Overview CPU by what it shows">`;
+  for (const t of niceTicks(max, 5)) s += `<line class="gridline" x1="${x(t)}" x2="${x(t)}" y1="${T}" y2="${H - 22}"/><text x="${x(t)}" y="${H - 6}" text-anchor="middle">${t}%</text>`;
+  ab.forEach((a, i) => {
+    const y = T + i * rowH;
+    s += `<text class="lbl" x="${L - 10}" y="${y + 17}" text-anchor="end">${esc(a.name)}</text>`;
+    s += `<rect x="${L}" y="${y + 6}" width="${Math.max(x(a.cpu) - L, 2)}" height="${rowH - 10}" rx="3" fill="${css("--before")}"><title>${esc(a.name)}: ${fmt(a.cpu)} %</title></rect>`;
+    s += `<text x="${x(a.cpu) + 6}" y="${y + 17}" style="fill:${css("--ink-2")}">${fmt(a.cpu)}</text>`;
+  });
+  $("#ablation-chart").innerHTML = `<h3>Before: Overview CPU by what the page shows (% of one core)</h3><div class="legend"><span>Rings turned on and off with the page's own Show menu, display on. The rings alone account for nearly all of it.</span></div>${s}</svg>`;
+  $("#screens-table").innerHTML = `<thead><tr><th>Scenario</th><th>Build</th><th>Display</th><th>CPU</th><th>Wakeups/s</th><th>Footprint</th><th>Note</th></tr></thead><tbody>` +
+    DATA.runs.map((r) => `<tr><td>${esc(r.scenario)}</td><td>${esc(r.build)}</td><td>${r.display === "on" ? "on" : "asleep"}</td><td>${fmt(r.cpu)} %</td><td>${r.wakeups ?? "—"}</td><td>${fmt(r.footprint, 0)} MB</td><td style="text-align:left">${esc(r.note)}</td></tr>`).join("") + `</tbody>`;
+}
+
+/* ---------- trace explorer ---------- */
+function initExplorer() {
+  const pick = $("#trace-pick");
+  pick.innerHTML = DATA.traces.map((t) => `<option value="${t.id}">${esc(t.name)}</option>`).join("");
+  pick.addEventListener("change", () => loadTrace(pick.value));
+  $("#thread-pick").addEventListener("change", (e) => { state.thread = e.target.value; state.zoom = null; drawAll(); });
+  $("#flame-search").addEventListener("input", (e) => { state.search = e.target.value.trim(); drawFlame(); });
+  $("#flame-reset").addEventListener("click", () => { state.zoom = null; drawFlame(); });
+  $("#cat-legend").innerHTML = [...CATS.map((c) => c[0]), "other"].map((k) => `<span><i class="sq" style="background:var(--c-${k})"></i>${esc(catLabel(k))}</span>`).join("");
+  window.addEventListener("resize", () => drawFlame());
+  loadTrace(DATA.traces[0].id);
+}
+
+async function loadTrace(id) {
+  if (!traceCache[id]) {
+    $("#ex-stats").innerHTML = `<span class="loading">Loading trace…</span>`;
+    traceCache[id] = await loadTraceData(id);
+  }
+  state.trace = traceCache[id];
+  state.zoom = null;
+  const threads = state.trace.flame.c.map((c) => c.n);
+  const tp = $("#thread-pick");
+  tp.innerHTML = `<option value="*">All threads</option>` + threads.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  state.thread = threads.includes("Main Thread") ? "Main Thread" : "*";
+  tp.value = state.thread;
+  drawAll();
+}
+
+/* Script tags work from file:// as well as over http; fetch is the fallback. */
+function loadTraceData(id) {
+  const have = () => window.REPORT_TRACES && window.REPORT_TRACES[id];
+  if (have()) return Promise.resolve(have());
+  return new Promise((resolve, reject) => {
+    const tag = document.createElement("script");
+    tag.src = `traces/${id}.js`;
+    tag.onload = () => (have() ? resolve(have()) : reject(new Error("trace " + id + " missing")));
+    tag.onerror = () => fetch(`traces/${id}.json`).then((r) => r.json()).then(resolve, reject);
+    document.head.appendChild(tag);
+  });
+}
+
+function rootNode() {
+  const f = state.trace.flame;
+  if (state.thread === "*") return f;
+  return f.c.find((c) => c.n === state.thread) || f;
+}
+
+function drawAll() {
+  const t = state.trace;
+  const meta = DATA.traces.find((x) => x.id === t.id) || {};
+  const dur = t.duration_s || 15;
+  $("#ex-stats").innerHTML = `
+    <span>Samples <b>${Math.round(t.total_ms).toLocaleString()} ms</b> of CPU over <b>${dur} s</b></span>
+    <span>= <b>${((t.total_ms / (dur * 1000)) * 100).toFixed(1)} %</b> of one core while tracing</span>
+    ${t.threads.slice(0, 3).map((th) => `<span>${esc(th.name)} <b>${Math.round(th.ms)} ms</b></span>`).join("")}`;
+  drawFlame();
+  drawTimeline();
+  drawLibs();
+  frameTables();
+}
+
+const ROW = 18;
+let flameRects = [];
+function drawFlame() {
+  if (!state.trace) return;
+  const canvas = $("#flame");
+  const root = rootNode();
+  const focus = state.zoom || root;
+  // path from root to focus, for the breadcrumb and the ancestor rows
+  const path = findPath(root, focus) || [root];
+  const W = canvas.clientWidth || canvas.parentElement.clientWidth;
+  let depth = 0;
+  (function measure(n, d) { depth = Math.max(depth, d); (n.c || []).forEach((c) => { if (c.v / focus.v * W >= 0.5) measure(c, d + 1); }); })(focus, 0);
+  const rows = path.length - 1 + depth + 1;
+  const H = rows * ROW + 4;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.height = H + "px";
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  ctx.font = `11px ${css("--font-mono")}`;
+  flameRects = [];
+  const q = state.search.toLowerCase();
+  const ink = css("--flame-ink");
+  const drawBox = (n, x, y, w, dim, isAncestor) => {
+    const cat = catOf(n.n);
+    const hit = q && n.n.toLowerCase().includes(q);
+    ctx.globalAlpha = q && !hit ? 0.28 : isAncestor ? 0.55 : 1;
+    ctx.fillStyle = catColor(cat);
+    ctx.fillRect(x + 0.5, y + 0.5, Math.max(w - 1, 0.5), ROW - 1);
+    if (hit) { ctx.globalAlpha = 1; ctx.strokeStyle = css("--ink"); ctx.lineWidth = 1.5; ctx.strokeRect(x + 1, y + 1, Math.max(w - 2, 1), ROW - 2); }
+    ctx.globalAlpha = q && !hit ? 0.45 : 1;
+    if (w > 34) {
+      ctx.fillStyle = ink;
+      const label = n.n.replace(/\s+\[[^\]]+\]\s*$/, "");
+      const max = Math.floor((w - 8) / 6.6);
+      ctx.fillText(label.length > max ? label.slice(0, Math.max(max - 1, 1)) + "…" : label, x + 4, y + 12.5);
+    }
+    ctx.globalAlpha = 1;
+    flameRects.push({ x, y, w, n });
+  };
+  // ancestors as full-width bars
+  path.slice(0, -1).forEach((n, i) => drawBox(n, 0, i * ROW, W, false, true));
+  const base = (path.length - 1) * ROW;
+  (function draw(n, x, d) {
+    const w = (n.v / focus.v) * W;
+    if (w < 0.5) return;
+    drawBox(n, x, base + d * ROW, w, false, false);
+    let cx = x;
+    for (const c of n.c || []) { draw(c, cx, d + 1); cx += (c.v / focus.v) * W; }
+  })(focus, 0, 0);
+  $("#crumbs").textContent = path.map((n) => n.n.replace(/\s+\[[^\]]+\]\s*$/, "")).join("  ›  ");
+}
+function findPath(root, target) {
+  if (root === target) return [root];
+  for (const c of root.c || []) { const p = findPath(c, target); if (p) return [root, ...p]; }
+  return null;
+}
+(function flameEvents() {
+  const canvas = $("#flame"), tip = $("#tip");
+  const at = (e) => {
+    const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    for (let i = flameRects.length - 1; i >= 0; i--) { const b = flameRects[i]; if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + ROW) return b; }
+    return null;
+  };
+  canvas.addEventListener("mousemove", (e) => {
+    const b = at(e);
+    if (!b) { tip.hidden = true; return; }
+    const root = rootNode(), total = state.trace.total_ms;
+    const selfMs = b.n.v - (b.n.c || []).reduce((s, c) => s + c.v, 0);
+    tip.innerHTML = `<div class="fn">${esc(b.n.n)}</div>
+      <div class="row">${b.n.v.toFixed(0)} ms total · ${(b.n.v / root.v * 100).toFixed(1)} % of ${esc(state.thread === "*" ? "all threads" : state.thread)} · ${(b.n.v / total * 100).toFixed(1)} % of trace</div>
+      <div class="row">${Math.max(selfMs, 0).toFixed(0)} ms in this frame itself · ${esc(catLabel(catOf(b.n.n)))}</div>`;
+    tip.hidden = false;
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    tip.style.left = Math.min(e.clientX + 14, window.innerWidth - tw - 8) + "px";
+    tip.style.top = (e.clientY + 18 + th > window.innerHeight ? e.clientY - th - 12 : e.clientY + 18) + "px";
+  });
+  canvas.addEventListener("mouseleave", () => (tip.hidden = true));
+  canvas.addEventListener("click", (e) => { const b = at(e); if (b) { state.zoom = b.n === rootNode() ? null : b.n; drawFlame(); } });
+})();
+
+function drawTimeline() {
+  const t = state.trace;
+  const series = t.timeline["Main Thread"] || Object.values(t.timeline)[0] || [];
+  const el = $("#timeline");
+  const W = 520, H = 170, L = 34, B = 22, T = 8, R = 6;
+  const n = series.length;
+  const max = 100;
+  const bw = (W - L - R) / Math.max(n, 1);
+  const y = (v) => T + (1 - Math.min(v, max) / max) * (H - T - B);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Main thread CPU per 100 ms">`;
+  for (const v of [0, 25, 50, 75, 100]) s += `<line class="gridline" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  const c = css("--accent");
+  series.forEach((v, i) => {
+    const h = H - B - y(v);
+    if (h > 0) s += `<rect x="${L + i * bw + 0.5}" y="${y(v)}" width="${Math.max(bw - 1, 0.6)}" height="${h}" fill="${c}"><title>${(i / 10).toFixed(1)} s: ${v.toFixed(0)} ms</title></rect>`;
+  });
+  const secs = Math.round(n / 10);
+  for (let sec = 0; sec <= secs; sec += Math.max(1, Math.round(secs / 6))) s += `<text x="${L + sec * 10 * bw}" y="${H - 6}" text-anchor="middle">${sec}s</text>`;
+  s += `</svg>`;
+  const avg = series.reduce((a, b) => a + b, 0) / Math.max(n, 1);
+  el.innerHTML = s + `<div class="legend"><span>Average ${avg.toFixed(1)} ms per 100 ms = ${avg.toFixed(1)} % of a core on the main thread. 100 means the main thread was busy the whole interval.</span></div>`;
+}
+
+function drawLibs() {
+  const t = state.trace;
+  const totals = {};
+  let sum = 0;
+  for (const b of t.binaries || []) { const k = catOf(`x [${b.b}]`); totals[k] = (totals[k] || 0) + b.ms; sum += b.ms; }
+  const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  const W = 520, rowH = 24, L = 190, R = 70;
+  const H = entries.length * rowH + 6;
+  const max = Math.max(...entries.map((e) => e[1]), 1);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Self time by library">`;
+  entries.forEach(([k, v], i) => {
+    const y = i * rowH + 3, w = (v / max) * (W - L - R);
+    s += `<text class="lbl" x="${L - 8}" y="${y + 14}" text-anchor="end">${esc(catLabel(k))}</text>`;
+    s += `<rect x="${L}" y="${y + 3}" width="${Math.max(w, 1)}" height="${rowH - 9}" rx="3" fill="${catColor(k)}"/>`;
+    s += `<text x="${L + w + 6}" y="${y + 14}" style="fill:${css("--ink-2")}">${Math.round(v)} ms \u00b7 ${((v / sum) * 100).toFixed(0)}%</text>`;
+  });
+  $("#libs").innerHTML = s + `</svg>`;
+}
+
+function frameTables() {
+  const t = state.trace;
+  const rowsOf = (list) => list.slice(0, 40).map((e) => `<tr><td class="frame"><span class="cat-dot" style="background:${catColor(catOf(e.f))}"></span>${esc(e.f)}</td><td>${Math.round(e.ms)} ms</td><td>${((e.ms / t.total_ms) * 100).toFixed(1)} %</td></tr>`).join("");
+  $("#self-table").innerHTML = `<thead><tr><th>Frame</th><th>Self</th><th>Share</th></tr></thead><tbody>${rowsOf(t.self)}</tbody>`;
+  // Leave out the run loop and thread entry frames every sample passes through.
+  const incl = t.inclusive.filter((e) => e.ms < t.total_ms * 0.85 && !/(RunLoop|EventLoop|NextEvent|_DPS|NSApplication|runApp|App\.main|\$main|^main |^start |thread_start|_pthread|wqthread|completeTaskWithClosure|<deduplicated_symbol>)/.test(e.f));
+  $("#incl-table").innerHTML = `<thead><tr><th>Frame</th><th>Total</th><th>Share</th></tr></thead><tbody>${rowsOf(incl)}</tbody>`;
+}
+
+/* ---------- memory ---------- */
+function renderMemory() {
+  const m = DATA.menubarMemory;
+  const cats = m.categories;
+  const W = 620, L = 70, R = 60, rowH = 44, T = 10;
+  const max = Math.max(m.before.total, m.after.total) * 1.05;
+  const x = (v) => (v / max) * (W - L - R);
+  const colors = { "GPU buffers": "--c-render", "Malloc heap": "--c-runtime", "CG images": "--c-appkit", "Everything else": "--c-other" };
+  let s = `<svg viewBox="0 0 ${W} ${T + rowH * 2 + 24}" role="img" aria-label="Menu bar only footprint by category">`;
+  [["Before", m.before], ["After", m.after]].forEach(([name, d], i) => {
+    const y = T + i * rowH;
+    s += `<text class="lbl" x="${L - 10}" y="${y + 20}" text-anchor="end">${name}</text>`;
+    let cx = L;
+    for (const c of cats) {
+      const v = d[c] || 0, w = x(v);
+      if (w > 0) s += `<rect x="${cx}" y="${y + 4}" width="${Math.max(w - 2, 1)}" height="24" rx="3" fill="var(${colors[c]})"><title>${name}: ${c} ${v.toFixed(0)} MB</title></rect>`;
+      if (w > 46) s += `<text x="${cx + 6}" y="${y + 20}" style="fill:var(--flame-ink);font-size:11px">${v.toFixed(0)} MB</text>`;
+      cx += w;
+    }
+    s += `<text x="${cx + 6}" y="${y + 20}" style="fill:${css("--ink")};font-weight:600">${d.total.toFixed(0)} MB</text>`;
+  });
+  s += `</svg>`;
+  const g = DATA.growth;
+  const GW = 520, GH = 170, GL = 40, GB = 22, GT = 8, GR = 10;
+  const tmax = g[g.length - 1][0], fmax = 250;
+  const gx = (t) => GL + (t / tmax) * (GW - GL - GR), gy = (v) => GT + (1 - v / fmax) * (GH - GT - GB);
+  let gs = `<svg viewBox="0 0 ${GW} ${GH}" role="img" aria-label="Footprint over 15 minutes">`;
+  for (const v of [0, 50, 100, 150, 200, 250]) gs += `<line class="gridline" x1="${GL}" x2="${GW - GR}" y1="${gy(v)}" y2="${gy(v)}"/><text x="${GL - 6}" y="${gy(v) + 4}" text-anchor="end">${v}</text>`;
+  for (let mn = 0; mn <= tmax / 60; mn += 3) gs += `<text x="${gx(mn * 60)}" y="${GH - 6}" text-anchor="middle">${mn} min</text>`;
+  gs += `<polyline fill="none" stroke="${css("--accent")}" stroke-width="2" points="${g.map((p) => `${gx(p[0])},${gy(p[2])}`).join(" ")}"/>`;
+  const lp = g[g.length - 1];
+  gs += `<circle cx="${gx(lp[0])}" cy="${gy(lp[2])}" r="4" fill="${css("--accent")}" stroke="${css("--surface")}" stroke-width="2"/></svg>`;
+  const cpuTotal = (g[g.length - 1][1] - g[0][1]) / (g[g.length - 1][0] - g[0][0]) * 100;
+  const h = DATA.heapDiff;
+  $("#memory-body").innerHTML = `
+    <p>In menu-bar-only mode, the state the app is meant to sit in all day, the footprint was dominated by GPU buffers that SwiftUI's <code>ImageRenderer</code> allocated to rasterize the 18-point status item image every second. The page content of a closed window was also still alive and updating.</p>
+    <div class="chart"><h3>Menu bar only, footprint by category 30 s after launch (MB)</h3>
+      <div class="legend">${cats.map((c) => `<span><i class="sq" style="background:var(${colors[c]})"></i>${esc(c)}</span>`).join("")}</div>${s}</div>
+    <div class="grid2">
+      <div class="chart"><h3>Footprint over 15 minutes on the Processes page, after the CPU fixes (MB)</h3>${gs}
+        <div class="legend"><span>Flat at ${g[g.length - 1][2].toFixed(0)} MB after ${Math.round(tmax / 60)} min (start ${g[0][2].toFixed(0)} MB). Average CPU over the run: ${cpuTotal.toFixed(1)} % of a core. No growth at this time scale.</span></div></div>
+      <div class="chart"><h3>The 9-day-old installed instance (0.4.0)</h3>
+        <p>Footprint ${h.vmmap9d.footprint} MB, peak ${h.vmmap9d.peak} MB. Of that, ${h.vmmap9d.graphics} MB were GPU buffers (the same <code>ImageRenderer</code> pool), ${h.vmmap9d.mallocAllocated} MB live heap and ${h.vmmap9d.mallocFrag} MB malloc fragmentation (35 %). <code>leaks</code> found 1 KB of unreachable memory, so the growth is memory still referenced, not leaked.</p>
+        <p>The heap held the full Processes table for a window nobody could see (736 text fields, about 11,000 Auto Layout objects) and 31,776 <code>NSKeyValueDependency</code> objects from SwiftUI's menu bar item observing the status item's appearance. Both are gone after the fixes: the window drops its page when it isn't visible, and the menu bar item no longer goes through <code>MenuBarExtra</code>.</p>
+      </div>
+    </div>
+    <h3>Heap classes that grew the most, 15-minute instance vs 9-day instance</h3>
+    <div class="table-wrap"><table><thead><tr><th>Class</th><th>Count, 15 min</th><th>Count, 9 days</th><th>Bytes, 15 min</th><th>Bytes, 9 days</th></tr></thead><tbody>
+      ${h.rows.map((r) => `<tr><td class="frame">${esc(r.cls)}</td><td>${r.c15.toLocaleString()}</td><td>${r.c9d.toLocaleString()}</td><td>${(r.b15 / 1e6).toFixed(2)} MB</td><td>${(r.b9d / 1e6).toFixed(2)} MB</td></tr>`).join("")}
+    </tbody></table></div>`;
+}
+
+function renderSampler() {
+  $("#sampler-body").innerHTML = DATA.samplerHtml + `
+    <div class="grid2"><div><h3 style="margin-bottom:8px">Before (sysbench 40 ticks)</h3><pre>${esc(DATA.sysbench.before)}</pre></div>
+    <div><h3 style="margin-bottom:8px">After</h3><pre>${esc(DATA.sysbench.after)}</pre></div></div>`;
+}
+
+function renderMethod() { $("#method-body").innerHTML = DATA.methodHtml; }
+
+main().catch((e) => { document.querySelector("#summary").insertAdjacentHTML("beforeend", `<p>Could not load the report data: ${esc(e.message)}</p>`); });
+</script>
