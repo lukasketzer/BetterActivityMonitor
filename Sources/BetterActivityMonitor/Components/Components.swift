@@ -207,31 +207,53 @@ struct Sparkline: View {
     var capacity: Int?
     var filled = true
 
+    // Shapes rather than a Canvas: every SwiftUI Canvas rasterizes through an in-process Metal buffer pool, which
+    // with the sidebar's sparklines and the history charts held about 130 MB. Shapes are drawn by Core Animation.
     var body: some View {
-        Canvas { context, size in
-            let count = max(capacity ?? values.count, 2)
-            guard values.count > 1 else { return }
-            let step = size.width / CGFloat(count - 1)
-            let offset = CGFloat(count - values.count) * step
-            let top = max(maxValue, values.max() ?? 0, .leastNonzeroMagnitude)
-            func point(_ i: Int) -> CGPoint {
-                CGPoint(x: offset + CGFloat(i) * step,
-                        y: size.height - CGFloat(values[i] / top) * (size.height - 1))
+        if values.count > 1 {
+            let line = SparklineShape(values: values, count: max(capacity ?? values.count, 2), top: max(maxValue, values.max() ?? 0, .leastNonzeroMagnitude))
+            ZStack {
+                if filled {
+                    line.closed().fill(LinearGradient(colors: [color.opacity(0.55), color.opacity(0.08)], startPoint: .top, endPoint: .bottom))
+                }
+                line.stroke(color, lineWidth: 1.2)
             }
-            var line = Path()
-            line.move(to: point(0))
-            for i in 1..<values.count { line.addLine(to: point(i)) }
-            if filled {
-                var area = line
-                area.addLine(to: CGPoint(x: point(values.count - 1).x, y: size.height))
-                area.addLine(to: CGPoint(x: offset, y: size.height))
-                area.closeSubpath()
-                context.fill(area, with: .linearGradient(
-                    Gradient(colors: [color.opacity(0.55), color.opacity(0.08)]),
-                    startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
-            }
-            context.stroke(line, with: .color(color), lineWidth: 1.2)
+        } else {
+            Color.clear
         }
+    }
+}
+
+/// The sparkline's line, or with `closed()` the area under it, right-aligned in a track of `count` points.
+private struct SparklineShape: Shape {
+    var values: [Double]
+    var count: Int
+    var top: Double
+    var isClosed = false
+
+    func closed() -> SparklineShape {
+        var copy = self
+        copy.isClosed = true
+        return copy
+    }
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        guard values.count > 1 else { return path }
+        let step = rect.width / CGFloat(count - 1)
+        let offset = CGFloat(count - values.count) * step
+        func point(_ i: Int) -> CGPoint {
+            CGPoint(x: rect.minX + offset + CGFloat(i) * step,
+                    y: rect.maxY - CGFloat(values[i] / top) * (rect.height - 1))
+        }
+        path.move(to: point(0))
+        for i in 1..<values.count { path.addLine(to: point(i)) }
+        if isClosed {
+            path.addLine(to: CGPoint(x: point(values.count - 1).x, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.minX + offset, y: rect.maxY))
+            path.closeSubpath()
+        }
+        return path
     }
 }
 

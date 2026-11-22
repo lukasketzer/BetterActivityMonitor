@@ -139,11 +139,34 @@ enum MenuBarRenderer {
         return image
     }
 
+    /// Reused between renders: a new renderer builds a new view graph each time.
+    private static var renderer: ImageRenderer<Host>?
+
+    private struct Host: View {
+        var glyph: MenuBarGlyph
+        var colorScheme: ColorScheme
+        var body: some View { glyph.environment(\.colorScheme, colorScheme) }
+    }
+
     static func render(_ glyph: MenuBarGlyph, scale: CGFloat, colorScheme: ColorScheme) -> NSImage? {
         // A template is a mask: draw it black and let the system tint it like its own icons.
-        let renderer = ImageRenderer(content: glyph.environment(\.colorScheme, glyph.colored ? colorScheme : .light))
-        renderer.scale = scale
-        let image = renderer.nsImage
+        let host = Host(glyph: glyph, colorScheme: glyph.colored ? colorScheme : .light)
+        let renderer = renderer ?? ImageRenderer(content: host)
+        renderer.content = host
+        self.renderer = renderer
+        // Draw into a plain bitmap context. `ImageRenderer.nsImage`/`cgImage` rasterize on the GPU and kept
+        // ~120 MB of Metal buffers alive for an 18 pt image, most of the app's memory while in the menu bar.
+        var image: NSImage?
+        renderer.render(rasterizationScale: scale) { size, draw in
+            let width = Int((size.width * scale).rounded(.up)), height = Int((size.height * scale).rounded(.up))
+            guard width > 0, height > 0,
+                  let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                          space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
+            context.scaleBy(x: scale, y: scale)
+            draw(context)
+            if let cgImage = context.makeImage() { image = NSImage(cgImage: cgImage, size: size) }
+        }
         image?.isTemplate = !glyph.colored
         return image
     }

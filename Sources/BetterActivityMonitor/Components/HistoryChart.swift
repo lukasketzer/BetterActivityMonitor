@@ -9,7 +9,9 @@ struct ChartSeries: Identifiable {
     var mirrored = false
 }
 
-/// Time-series graph drawn with Canvas (Swift Charts is too heavy to redraw every second).
+/// Time-series graph drawn with plain shapes (Swift Charts is too heavy to redraw every second). Not a Canvas:
+/// a SwiftUI Canvas this size rasterizes through an in-process Metal buffer pool, about 130 MB for the app's charts,
+/// while shapes are drawn by Core Animation.
 /// Hovering shows a rule and every series' value at that moment.
 struct HistoryChart: View {
     var series: [ChartSeries]
@@ -33,7 +35,8 @@ struct HistoryChart: View {
                 .map { tooltipInfo(model, index: $0, plotWidth: plot.width) }
             // The tooltip floats in its own window above the whole container (see FloatingTooltip),
             // so it is never clipped by the card and never affects the chart's layout.
-            Canvas { context, _ in draw(model, in: &context, plot: plot) }
+            drawing(model, plot: plot)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
                 .background(TooltipAnchorView(anchor: anchor))
                 .contentShape(Rectangle())
                 .onContinuousHover { phase in
@@ -113,62 +116,75 @@ struct HistoryChart: View {
 
     // MARK: Drawing
 
-    private func draw(_ m: Model, in context: inout GraphicsContext, plot: CGSize) {
+    private func drawing(_ m: Model, plot: CGSize) -> some View {
         let h = plot.height, w = plot.width
-
-        // Grid + labels.
         let ticks = m.bottom < 0 ? [m.top, 0, m.bottom] : [m.top, m.top / 2, 0]
-        for tick in ticks {
-            let y = min(max(m.y(tick, height: h), 0.5), h - 0.5)
-            var line = Path()
-            line.move(to: CGPoint(x: 0, y: y))
-            line.addLine(to: CGPoint(x: w, y: y))
-            context.stroke(line, with: .color(.secondary.opacity(tick == 0 ? 0.35 : 0.15)), lineWidth: 0.5)
-            if showsYAxis {
-                context.draw(Text(format(abs(tick))).font(.caption2).foregroundStyle(.secondary),
-                             at: CGPoint(x: w + 6, y: y), anchor: tick == m.top ? .topLeading : tick == m.bottom && m.bottom < 0 ? .bottomLeading : .leading)
-            }
-        }
-
+        let tickY = { (tick: Double) in min(max(m.y(tick, height: h), 0.5), h - 0.5) }
         let baseline = m.y(0, height: h)
-        // Draw stacked series top-down so lower layers stay visible.
-        for (s, values) in zip(m.series, m.values).reversed() where values.count > 1 {
-            let points = values.indices.map { CGPoint(x: m.x($0, width: w), y: m.y(values[$0], height: h)) }
-            switch style {
-            case .bars:
-                let barWidth = max(w / CGFloat(m.capacity - 1) * 0.75, 1)
-                for p in points {
-                    let rect = CGRect(x: p.x - barWidth / 2, y: min(p.y, baseline), width: barWidth, height: abs(baseline - p.y))
-                    context.fill(Path(rect), with: .color(s.color.opacity(0.85)))
-                }
-            case .line, .area:
-                var line = Path()
-                line.addLines(points)
-                if style == .area {
-                    var area = line
-                    area.addLine(to: CGPoint(x: points.last!.x, y: baseline))
-                    area.addLine(to: CGPoint(x: points.first!.x, y: baseline))
-                    area.closeSubpath()
-                    let edge = s.mirrored ? h : 0
-                    context.fill(area, with: .linearGradient(
-                        Gradient(colors: [s.color.opacity(stacked ? 0.75 : 0.5), s.color.opacity(stacked ? 0.35 : 0.06)]),
-                        startPoint: CGPoint(x: 0, y: edge), endPoint: CGPoint(x: 0, y: baseline)))
-                }
-                context.stroke(line, with: .color(s.color), style: StrokeStyle(lineWidth: 1.4, lineJoin: .round))
-            }
-        }
+        let layers = Array(zip(m.series, m.values).enumerated().reversed()).filter { $0.element.1.count > 1 }
+        let hoverIndex = hoverX.flatMap { m.index(atX: $0, width: w) }
 
-        if let hoverX, let index = m.index(atX: hoverX, width: w) {
-            let x = m.x(index, width: w)
-            var rule = Path()
-            rule.move(to: CGPoint(x: x, y: 0))
-            rule.addLine(to: CGPoint(x: x, y: h))
-            context.stroke(rule, with: .color(.primary.opacity(0.4)), lineWidth: 1)
-            for (s, values) in zip(m.series, m.values) where index < values.count {
-                let p = CGPoint(x: x, y: m.y(values[index], height: h))
-                context.fill(Path(ellipseIn: CGRect(x: p.x - 3, y: p.y - 3, width: 6, height: 6)), with: .color(s.color))
+        return ZStack(alignment: .topLeading) {
+            // Grid; the zero line is a little stronger.
+            ForEach(Array(ticks.enumerated()), id: \.offset) { _, tick in
+                Path { $0.move(to: CGPoint(x: 0, y: tickY(tick))); $0.addLine(to: CGPoint(x: w, y: tickY(tick))) }
+                    .stroke(Color.secondary.opacity(tick == 0 ? 0.35 : 0.15), lineWidth: 0.5)
+                if showsYAxis {
+                    // Same anchors as before: the top label hangs below its line, a mirrored bottom label sits above it.
+                    let nudge: CGFloat = tick == m.top ? 7 : (tick == m.bottom && m.bottom < 0 ? -7 : 0)
+                    Text(format(abs(tick))).font(.caption2).foregroundStyle(.secondary)
+                        .fixedSize()
+                        .frame(width: axisWidth - 6, height: 14, alignment: .leading)
+                        .position(x: w + 6 + (axisWidth - 6) / 2, y: tickY(tick) + nudge)
+                }
+            }
+
+            // Stacked series top-down so lower layers stay visible.
+            ForEach(layers, id: \.offset) { _, pair in
+                let (s, values) = pair
+                let points = values.indices.map { CGPoint(x: m.x($0, width: w), y: m.y(values[$0], height: h)) }
+                switch style {
+                case .bars:
+                    let barWidth = max(w / CGFloat(m.capacity - 1) * 0.75, 1)
+                    Path { path in
+                        for p in points {
+                            path.addRect(CGRect(x: p.x - barWidth / 2, y: min(p.y, baseline), width: barWidth, height: abs(baseline - p.y)))
+                        }
+                    }
+                    .fill(s.color.opacity(0.85))
+                case .line, .area:
+                    if style == .area {
+                        let edge = s.mirrored ? h : 0
+                        Path { path in
+                            path.addLines(points)
+                            path.addLine(to: CGPoint(x: points.last!.x, y: baseline))
+                            path.addLine(to: CGPoint(x: points.first!.x, y: baseline))
+                            path.closeSubpath()
+                        }
+                        .fill(LinearGradient(
+                            colors: [s.color.opacity(stacked ? 0.75 : 0.5), s.color.opacity(stacked ? 0.35 : 0.06)],
+                            startPoint: UnitPoint(x: 0, y: h > 0 ? edge / h : 0),
+                            endPoint: UnitPoint(x: 0, y: h > 0 ? baseline / h : 1)))
+                    }
+                    Path { $0.addLines(points) }
+                        .stroke(s.color, style: StrokeStyle(lineWidth: 1.4, lineJoin: .round))
+                }
+            }
+
+            if let index = hoverIndex {
+                let x = m.x(index, width: w)
+                Path { $0.move(to: CGPoint(x: x, y: 0)); $0.addLine(to: CGPoint(x: x, y: h)) }
+                    .stroke(Color.primary.opacity(0.4), lineWidth: 1)
+                ForEach(Array(zip(m.series, m.values).enumerated()), id: \.offset) { _, pair in
+                    if index < pair.1.count {
+                        Circle().fill(pair.0.color)
+                            .frame(width: 6, height: 6)
+                            .position(x: x, y: m.y(pair.1[index], height: h))
+                    }
+                }
             }
         }
+        .frame(width: w, height: h, alignment: .topLeading)
     }
 
     private func tooltipInfo(_ m: Model, index: Int, plotWidth: CGFloat) -> ChartTooltip.Info {

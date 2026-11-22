@@ -9,7 +9,18 @@ final class ProcessSampler {
         var diskWrite: UInt64
         var wakeups: UInt64
         var energyNJ: UInt64
+        /// From the last task-info read; reused while the process stays idle (see `taskInfoRefresh`).
+        var threads: Int
+        var resident: UInt64
+        var taskInfoTick: Int
     }
+
+    /// Task info (thread count, running state) costs a second syscall per process and was a third of the
+    /// sampler's kernel time. A process that used no CPU since the last tick cannot have started or ended
+    /// threads or been running, so its last answer is reused, refreshed at least this many ticks apart.
+    private static let taskInfoRefresh = 10
+    private var tick = 0
+    private var kinfoBuffer: [kinfo_proc] = []
 
     /// v6 adds `ri_energy_nj`. It extends v4 field for field, so a v4 answer fills the same struct
     /// (energy then stays 0). Starts at v6 and drops to v4 for good if the kernel refuses it.
@@ -33,7 +44,8 @@ final class ProcessSampler {
     func sample() -> [ProcessEntry] {
         let now = Date()
         let dt = previousTime.map { max(now.timeIntervalSince($0), 0.001) }
-        let kinfos = Self.listKinfo()
+        tick += 1
+        let kinfos = Self.listKinfo(reusing: &kinfoBuffer)
         var result: [ProcessEntry] = []
         result.reserveCapacity(kinfos.count)
         var next: [pid_t: Previous] = [:]
@@ -86,7 +98,8 @@ final class ProcessSampler {
                 let wakeups = usage.ri_pkg_idle_wkups + usage.ri_interrupt_wkups
                 entry.energyTotal = Double(usage.ri_energy_nj) / 1e9
 
-                if let dt, let prev = previous[pid], prev.startTime == start {
+                let prev = previous[pid].flatMap { $0.startTime == start ? $0 : nil }
+                if let dt, let prev {
                     entry.cpu = Double(cpuNanos &- prev.cpuNanos) / (dt * 1e9) * 100
                     entry.diskReadRate = Double(entry.diskReadTotal &- prev.diskRead) / dt
                     entry.diskWriteRate = Double(entry.diskWriteTotal &- prev.diskWrite) / dt
@@ -96,18 +109,26 @@ final class ProcessSampler {
                     }
                     if entry.cpu < 0 || entry.cpu > 100_000 { entry.cpu = 0 }
                 }
-                next[pid] = Previous(startTime: start, cpuNanos: cpuNanos,
-                                     diskRead: entry.diskReadTotal, diskWrite: entry.diskWriteTotal,
-                                     wakeups: wakeups, energyNJ: usage.ri_energy_nj)
-            }
-
-            var task = proc_taskinfo()
-            let size = Int32(MemoryLayout<proc_taskinfo>.size)
-            if proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &task, size) == size {
-                entry.hasTaskInfo = true
-                entry.threads = Int(task.pti_threadnum)
-                if entry.resident == 0 { entry.resident = task.pti_resident_size }
-                if entry.state == .unknown { entry.state = task.pti_numrunning > 0 ? .running : .sleeping }
+                var info = Previous(startTime: start, cpuNanos: cpuNanos,
+                                    diskRead: entry.diskReadTotal, diskWrite: entry.diskWriteTotal,
+                                    wakeups: wakeups, energyNJ: usage.ri_energy_nj,
+                                    threads: 0, resident: 0, taskInfoTick: -Self.taskInfoRefresh)
+                if let prev, prev.cpuNanos == cpuNanos, tick - prev.taskInfoTick < Self.taskInfoRefresh {
+                    info.threads = prev.threads
+                    info.resident = prev.resident
+                    info.taskInfoTick = prev.taskInfoTick
+                    entry.threads = prev.threads
+                    if entry.resident == 0 { entry.resident = prev.resident }
+                    if entry.state == .unknown { entry.state = .sleeping }
+                } else if let task = Self.taskInfo(pid) {
+                    info.threads = Int(task.pti_threadnum)
+                    info.resident = task.pti_resident_size
+                    info.taskInfoTick = tick
+                    Self.apply(task, to: &entry)
+                }
+                next[pid] = info
+            } else if let task = Self.taskInfo(pid) {
+                Self.apply(task, to: &entry)
             }
             if !entry.hasTaskInfo { denied[pid] = start }
             threads += entry.threads
@@ -121,6 +142,19 @@ final class ProcessSampler {
         paths = paths.filter { alive.contains($0.key) }
         denied = denied.filter { alive.contains($0.key) }
         return result
+    }
+
+    private static func taskInfo(_ pid: pid_t) -> proc_taskinfo? {
+        var task = proc_taskinfo()
+        let size = Int32(MemoryLayout<proc_taskinfo>.size)
+        return proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &task, size) == size ? task : nil
+    }
+
+    private static func apply(_ task: proc_taskinfo, to entry: inout ProcessEntry) {
+        entry.hasTaskInfo = true
+        entry.threads = Int(task.pti_threadnum)
+        if entry.resident == 0 { entry.resident = task.pti_resident_size }
+        if entry.state == .unknown { entry.state = task.pti_numrunning > 0 ? .running : .sleeping }
     }
 
     private func path(for pid: pid_t, start: Date) -> String {
@@ -139,16 +173,21 @@ final class ProcessSampler {
         return name
     }
 
-    static func listKinfo() -> [kinfo_proc] {
+    /// Lists every process into `buffer`, which is kept between calls so the ~700 KB table isn't
+    /// reallocated and zeroed every tick; it only grows when the process count outgrows it.
+    static func listKinfo(reusing buffer: inout [kinfo_proc]) -> ArraySlice<kinfo_proc> {
         var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
-        for _ in 0..<3 {
-            var size = 0
-            guard sysctl(&mib, 4, nil, &size, nil, 0) == 0 else { return [] }
-            size += size / 8
-            let stride = MemoryLayout<kinfo_proc>.stride
-            var buffer = [kinfo_proc](repeating: kinfo_proc(), count: size / stride)
+        let stride = MemoryLayout<kinfo_proc>.stride
+        for attempt in 0..<4 {
+            if attempt > 0 || buffer.isEmpty {
+                var needed = 0
+                guard sysctl(&mib, 4, nil, &needed, nil, 0) == 0 else { return [] }
+                needed += needed / 8
+                if needed / stride > buffer.count { buffer = [kinfo_proc](repeating: kinfo_proc(), count: needed / stride) }
+            }
+            var size = buffer.count * stride
             if sysctl(&mib, 4, &buffer, &size, nil, 0) == 0 {
-                return Array(buffer.prefix(size / stride))
+                return buffer[..<(size / stride)]
             }
             if errno != ENOMEM { return [] }
         }

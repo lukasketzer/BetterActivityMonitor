@@ -1,27 +1,5 @@
 import SwiftUI
 
-struct MenuBarLabel: View {
-    var store: SystemStore
-    @AppStorage(SettingsKey.menuBarItems) private var items = MenuBarItems.default
-    @AppStorage(SettingsKey.menuBarStyle) private var style: MenuBarStyle = .rings
-    @AppStorage(SettingsKey.menuBarColored) private var colored = false
-    @AppStorage(SettingsKey.menuBarSymbols) private var symbols = true
-    @AppStorage(SettingsKey.theme) private var themeID = Theme.system.id
-    @AppStorage(SettingsKey.fahrenheit) private var fahrenheit = false
-    @Environment(\.displayScale) private var scale
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        let glyph = MenuBarGlyph(readings: store.menuBarReadings(items.enabled, fahrenheit: fahrenheit),
-                                 style: style, colored: colored, symbols: symbols, theme: Theme.named(themeID))
-        if let image = MenuBarRenderer.image(glyph, scale: scale, colorScheme: colorScheme) {
-            Image(nsImage: image)
-        } else {
-            Image(systemName: "gauge.with.dots.needle.33percent")
-        }
-    }
-}
-
 extension SystemStore {
     /// The chosen metrics this Mac can provide, in the chosen order. Empty until the first sample.
     func menuBarReadings(_ metrics: [MenuBarMetric], fahrenheit: Bool) -> [MenuBarReading] {
@@ -31,9 +9,13 @@ extension SystemStore {
     }
 }
 
+/// The menu bar item's popover (see `StatusItemController`).
 struct MenuBarView: View {
+    /// Closes the popover.
+    var close: () -> Void = {}
     @Environment(SystemStore.self) private var store
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     @AppStorage(SettingsKey.theme) private var themeID = Theme.system.id
     @AppStorage(SettingsKey.menuBarItems) private var items = MenuBarItems.default
 
@@ -67,12 +49,13 @@ struct MenuBarView: View {
             }
             Divider()
             HStack {
-                Button("Open Monitor") {
-                    openWindow(id: "main")
-                    NSApp.activate()
-                }
+                Button("Open Monitor") { openMonitor() }
                 Spacer()
-                SettingsLink { Text("Settings…") }
+                Button("Settings…") {
+                    close()
+                    NSApp.activate()
+                    openSettings()
+                }
                 Button("Quit") { NSApp.terminate(nil) }
             }
             .controlSize(.small)
@@ -82,9 +65,19 @@ struct MenuBarView: View {
         .environment(\.theme, theme)
         .onChange(of: store.section) { _, _ in
             // Clicking a top process navigates the main window; bring it forward.
-            openWindow(id: "main")
-            NSApp.activate()
+            openMonitor()
         }
+    }
+
+    private func openMonitor() {
+        close()
+        // SwiftUI keeps the main window after it is closed; reopen that one when it exists.
+        if let window = NSApp.windows.first(where: { $0.identifier?.rawValue.hasPrefix("main") == true }) {
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            openWindow(id: "main")
+        }
+        NSApp.activate()
     }
 
     private func row(_ title: String, _ value: String, values: [Double], color: Color, maxValue: Double = 1) -> some View {

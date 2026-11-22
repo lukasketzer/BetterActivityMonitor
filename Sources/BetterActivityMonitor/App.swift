@@ -3,8 +3,7 @@ import SwiftUI
 @main
 struct BetterActivityMonitorApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @State private var store = SystemStore()
-    @AppStorage(SettingsKey.showMenuBarExtra) private var showMenuBarExtra = false
+    @State private var store = SystemStore.shared
 
     var body: some Scene {
         Window("BetterActivityMonitor", id: "main") {
@@ -23,19 +22,13 @@ struct BetterActivityMonitorApp: App {
         Settings {
             SettingsView().environment(store)
         }
-
-        MenuBarExtra(isInserted: $showMenuBarExtra) {
-            MenuBarView().environment(store)
-        } label: {
-            MenuBarLabel(store: store)
-        }
-        .menuBarExtraStyle(.window)
     }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Opened at login with the menu bar item on: start as a menu-bar-only app, without the window.
     private var startHidden = false
+    private var statusItem: StatusItemController?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         startHidden = (LoginItem.launchedAtLogin || CommandLine.arguments.contains("--hidden"))
@@ -52,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .appendingPathComponent("../../Resources/AppIcon.icns").standardized
         NSApp.applicationIconImage = NSImage(contentsOf: icon)
         observeMainWindow()
+        statusItem = StatusItemController(store: .shared)
         if startHidden {
             // SwiftUI opens the main window on launch; close it as soon as it exists.
             DispatchQueue.main.async {

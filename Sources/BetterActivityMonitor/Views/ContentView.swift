@@ -13,10 +13,15 @@ struct ContentView: View {
             Sidebar()
                 .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 300)
         } detail: {
-            detail
-                .modifier(FreezeDuringLiveResize())
-                .navigationTitle(store.section?.title ?? "BetterActivityMonitor")
+            Group {
+                // Nothing to draw while the window is off screen; the page is rebuilt when it comes back.
+                if store.mainWindowVisible { detail } else { Color.clear }
+            }
+            .modifier(FreezeDuringLiveResize())
+            .navigationTitle(store.section?.title ?? "BetterActivityMonitor")
         }
+        // Layout snapshots (BAM_SNAPSHOT_DIR) capture the window even when it is covered, so they always draw.
+        .onWindowVisibilityChange { store.mainWindowVisible = $0 || LayoutAudit.enabled }
         // Showing the sidebar pushes the detail aside instead of floating over it.
         .navigationSplitViewStyle(.balanced)
         .environment(\.theme, theme)
@@ -131,7 +136,8 @@ private struct Sidebar: View {
                     row(.network, value: store.snapshot.map { Fmt.rate($0.network.rateIn + $0.network.rateOut) },
                         graph: zip(store.netIn.values, store.netOut.values).map(+), max: 1, color: theme.netIn)
                 }
-                if store.snapshot?.gpu != nil, !hidden.contains(.gpu) {
+                // Off screen, skip reading the snapshot so the sidebar has no per-sample dependency.
+                if !hidden.contains(.gpu), !store.mainWindowVisible || store.snapshot?.gpu != nil {
                     row(.gpu, value: store.snapshot?.gpu.map { Fmt.percent($0.utilization, digits: 0) },
                         graph: store.gpu.values, max: 1, color: theme.gpu)
                 }
@@ -151,8 +157,12 @@ private struct Sidebar: View {
         .listStyle(.sidebar)
     }
 
-    private func row(_ section: AppSection, value: String?, graph: [Double]? = nil, max: Double = 1, color: Color = .accentColor) -> some View {
-        HStack(spacing: 6) {
+    private func row(_ section: AppSection, value: @autoclosure () -> String?, graph: @autoclosure () -> [Double]? = nil,
+                     max: Double = 1, color: Color = .accentColor) -> some View {
+        let live = store.mainWindowVisible
+        let value = live ? value() : nil
+        let graph = live ? graph() : nil
+        return HStack(spacing: 6) {
             Label(section.title, systemImage: section.symbol)
             Spacer(minLength: 4)
             if let graph, graph.count > 1 {
