@@ -6,3 +6,4 @@ build/
 *.dmg
 *.zip
 xcuserdata/
+-Xcc/
