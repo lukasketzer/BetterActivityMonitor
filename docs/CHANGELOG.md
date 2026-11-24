@@ -6,6 +6,8 @@ tagged version into the GitHub Release notes.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-24
+
 ### Changed
 
 - The menu bar item is a standard status item; its popover now opens with the usual popover arrow.
